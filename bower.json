@@ -1,0 +1,10 @@
+{
+  "name": "webapp",
+  "private": true,
+  "dependencies": {
+    "bootstrap-sass-official": "~3.2.0",
+    "modernizr": "~2.8.2",
+    "lodash": "~2.4.1",
+    "raphael": "~2.1.2"
+  }
+}
