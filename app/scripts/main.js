@@ -32,20 +32,30 @@ function lovehate(canvas, opts) {
          * @constructor
          */
         function SVGGroup() {
-            this.circle = paper.circle(_this.x, _this.y, _this.radius).attr({
+            var pt, pathstr;
+            this.circle = paper.circle(_this.x, _this.y, _this.radius - 2).attr({
                 'fill': Colors.shift(),
-                'stroke-width': 0
+                'stroke-width': 1
             });
-            this.lovearrow = attractedTo ? paper.path(Raphael.format('M{0},{1}L{2},{3}', _this.x, _this.y, attractedTo.x, attractedTo.y)).attr({
-                'stroke': 'pink',
-                'stroke-dasharray': '- ',
-                'arrow-end': 'classic-wide-long',
-            }) : null;
-            this.hatearrow = repelledFrom ? paper.path(Raphael.format('M{0},{1}L{2},{3}', _this.x, _this.y, repelledFrom.x, repelledFrom.y)).attr({
-                'stroke': 'black',
-                'stroke-dasharray': '. ',
-                'arrow-end': 'classic-wide-long',
-            }) : null;
+
+            if (attractedTo) {
+                pt = Math.circleClosest(_this, attractedTo);
+                pathstr = Raphael.format('M{0},{1}L{2},{3}', _this.x, _this.y, pt[0], pt[1]);
+                this.lovearrow = paper.path(pathstr).attr({
+                    'stroke': 'pink',
+                    'stroke-dasharray': '- ',
+                    'arrow-end': 'classic-wide-long'
+                });
+            }
+            if (repelledFrom) {
+                pt = Math.circleClosest(_this, repelledFrom);
+                pathstr = Raphael.format('M{0},{1}L{2},{3}', _this.x, _this.y, pt[0], pt[1]);
+                this.lovearrow = paper.path(pathstr).attr({
+                    'stroke': 'black',
+                    'stroke-dasharray': '. ',
+                    'arrow-end': 'classic-wide-long'
+                });
+            }
 
             this.onMove = function() {
                 this.circle.attr({
@@ -56,7 +66,7 @@ function lovehate(canvas, opts) {
                 moveLine(this.hatearrow, { 'start': [_this.x, _this.y] });
                 _.each(pointedAtBy, function(person) {
                     var el = person.attracted() === _this ? person.drawn.lovearrow : person.drawn.hatearrow;
-                    moveLine(el, { 'end': [_this.x, _this.y] });
+                    moveLine(el, { 'end': Math.circleClosest(_this, person) });
                 });
             };
         }
@@ -176,3 +186,81 @@ Math.rect2polar = function(x, y) {
     'use strict';
     return [Math.hypot(x, y), Math.atan(y / x)];
 };
+
+/**
+ * Find the real root(s) of the quadratic equation ax ^ 2 + bx + c = 0.
+ *
+ * @param Number a
+ * @param Number b
+ * @param Number c
+ * @return an array of real roots of the equation
+ */
+Math.solveQuadratic = function(a, b, c) {
+    'use strict';
+    var det = b * b - 4 * a * c, sqrt;
+    if (det < 0) {
+        return [];
+    }
+    else if (det === 0) {
+        return [-b / 2 / a];
+    }
+    else {
+        sqrt = Math.sqrt(det);
+        return [(-b + sqrt) / (2 * a), (-b - sqrt) / (2 * a)];
+    }
+};
+
+/**
+ * Find the point on circle that is closest to p.
+ */
+Math.circleClosest = function(p, circle) {
+    'use strict';
+    var x0 = p.x, y0 = p.y;
+    var x1 = circle.x, y1 = circle.y, r = circle.radius;
+
+    var L, roots, d0, d1;
+
+    // find the slope of the line connecting (x0,y0) and (x1,y1)
+    var m = (y1 - y0) / (x1 - x0);
+
+    // if the points are on the same vertical line, then return the point on the 
+    // circle that's also on that line and above or below the center
+    if (isNaN(m)) {
+        return p.y > y1 ? [x1, y1 + r] : [x1, y1 - r];
+    }
+
+    // frigging math:
+    // 
+    // the line connecting (x0,y0) and (x1,y1) is: y - y1 = m * (x - x1)
+    // the circle centered at (x1,y1) with radius r is: (x - x1) ^ 2 + (y - y1) ^ 2 = r ^ 2
+    //
+    // solve the top equation for y: y = m * (x - x1) + y1
+    // 
+    // substitute for y in the bottom equation, also FOIL the first term:
+    // (x ^ 2 - 2 * x1 * x + x1 ^ 2) + (m * (x - x1) + y1 - y1) ^ 2 = r ^ 2
+    //
+    // cancel out y1, square both of the remaining terms:
+    // (x ^ 2 - 2 * x1 * x + x1 ^ 2) + m ^ 2 * (x - x1) ^ 2 = r ^ 2
+    //
+    // FOIL:
+    // (x ^ 2 - 2 * x1 * x + x1 ^ 2) + m ^ 2 * (x ^ 2 - 2 * x1 * x + x1 ^ 2) = r ^ 2
+    //
+    // Distribute m ^ 2 and collect like terms:
+    // (m ^ 2 + 1) * x ^ 2 - 2 * x1 * (m ^ 2 + 1) * x + (m ^ 2 + 1) * x1 ^ 2 - r ^ 2 = 0
+
+    roots = Math.solveQuadratic(m * m + 1, -2 * x1 * (m * m + 1), (m * m + 1) * x1 * x1 - r * r);
+
+    // find the coordinates' y-values by plugging them back into the point-slope equation
+    roots = _.map(roots, function(x) {
+        return [x, m * (x - x1) + y1];
+    });
+
+    // and choose the point that's closest. pick the point whose x-coordinate is closer to p.x.
+    d0 = Math.abs(p.x - roots[0][0]), d1 = Math.abs(p.x - roots[1][0]);
+    if (d0 != d1) {
+        return d0 < d1 ? roots[0] : roots[1];
+    }
+    else {
+        return Math.abs(p.y - roots[0][1]) < Math.abs(p.y - roots[1][1]) ? roots[0] : roots[1];
+    }
+}
