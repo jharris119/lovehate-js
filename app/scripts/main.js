@@ -3,6 +3,7 @@
 
 function lovehate(canvas, opts) {
     'use strict';
+
     var paper = Raphael(canvas, 550, 300);  // jshint ignore:line
     var x, y, person;
 
@@ -50,7 +51,7 @@ function lovehate(canvas, opts) {
             if (repelledFrom) {
                 pt = Math.circleClosest(_this, repelledFrom);
                 pathstr = Raphael.format('M{0},{1}L{2},{3}', _this.x, _this.y, pt[0], pt[1]);
-                this.lovearrow = paper.path(pathstr).attr({
+                this.hatearrow = paper.path(pathstr).attr({
                     'stroke': 'black',
                     'stroke-dasharray': '. ',
                     'arrow-end': 'classic-wide-long'
@@ -62,27 +63,28 @@ function lovehate(canvas, opts) {
                     'cx': _this.x,
                     'cy': _this.y
                 });
+
                 moveLine(this.lovearrow, { 'start': [_this.x, _this.y] });
                 moveLine(this.hatearrow, { 'start': [_this.x, _this.y] });
-                _.each(pointedAtBy, function(person) {
+                _.each(_this.getPointedAtBy(), function(person) {
                     var el = person.attracted() === _this ? person.drawn.lovearrow : person.drawn.hatearrow;
-                    moveLine(el, { 'end': Math.circleClosest(_this, person) });
+                    moveLine(el, { 'end': Math.circleClosest(person, _this) });
                 });
             };
         }
 
-        this.attracted = function(arg) {
-            if (arg && arg.constructor === Person) {
-                attractedTo = arg;
-                pointedAtBy.push(arg);
+        this.attracted = function(attractor) {
+            if (attractor && attractor.constructor === Person) {
+                attractedTo = attractor;
+                attractor.addConnection(this);
             }
             return attractedTo; 
         };
 
-        this.repelled  = function(arg) {
-            if (arg && arg.constructor === Person) {
-                pointedAtBy.push(arg);
-                repelledFrom = arg;
+        this.repelled  = function(repellant) {
+            if (repellant && repellant.constructor === Person) {
+                repelledFrom = repellant;
+                repellant.addConnection(this);
             }
             return repelledFrom;
         };
@@ -94,6 +96,14 @@ function lovehate(canvas, opts) {
             else {
                 this.drawn.onMove();
             }   
+        };
+
+        this.addConnection = function(connection) {
+            pointedAtBy.push(connection);
+        };
+
+        this.getPointedAtBy = function() { 
+            return pointedAtBy;
         };
 
         function moveLine(element, newcoords) {
@@ -109,8 +119,9 @@ function lovehate(canvas, opts) {
         }
     }
     Person.collides = function(p, q) {
-        return Math.hypot(p.x - q.x, p.y - q.y) < p.radius + q.radius;
+        return p === q ? false : Math.hypot(p.x - q.x, p.y - q.y) < p.radius + q.radius;
     };
+    Person.id = 1;
 
     opts = _.extend({
         count:  5,
@@ -136,12 +147,13 @@ function lovehate(canvas, opts) {
     // once they're initialized, assign each one a random person to love and hate
     _.each(people, function(person) {
         var tmp;
-        while (!(tmp = person.attracted()) || tmp === person) {
-            person.attracted(_.sample(people));
-        }
-        while (!(tmp = person.repelled()) || tmp === person || tmp === person.attracted()) {
-            person.repelled(_.sample(people));
-        }
+        
+        while ((tmp = _.sample(people)) === person);
+        person.attracted(tmp);
+
+        while ((tmp = _.sample(people)) === person || tmp === person.attracted());
+        person.repelled(tmp);
+
         person.draw();
     });
 
@@ -157,15 +169,12 @@ function lovehate(canvas, opts) {
             person.vector[1] *= -1;
         }
 
+        if (_.any(people, _.partial(Person.collides, person))) {
+            console.log('collision');
+        }
+
         person.draw();
     }
-
-    // function next(person) {
-    //     _.delay(function() {
-    //         movePerson(person);
-    //         next(person);
-    //     }, 1000 / 16);
-    // }
 
     $(document).keypress(function(evt) {
         doMove(people[evt.which - 49]);
@@ -218,7 +227,7 @@ Math.circleClosest = function(p, circle) {
     var x0 = p.x, y0 = p.y;
     var x1 = circle.x, y1 = circle.y, r = circle.radius;
 
-    var L, roots, d0, d1;
+    var roots, d0, d1;
 
     // find the slope of the line connecting (x0,y0) and (x1,y1)
     var m = (y1 - y0) / (x1 - x0);
@@ -256,11 +265,12 @@ Math.circleClosest = function(p, circle) {
     });
 
     // and choose the point that's closest. pick the point whose x-coordinate is closer to p.x.
-    d0 = Math.abs(p.x - roots[0][0]), d1 = Math.abs(p.x - roots[1][0]);
-    if (d0 != d1) {
+    d0 = Math.abs(p.x - roots[0][0]);
+    d1 = Math.abs(p.x - roots[1][0]);
+    if (d0 !== d1) {
         return d0 < d1 ? roots[0] : roots[1];
     }
     else {
         return Math.abs(p.y - roots[0][1]) < Math.abs(p.y - roots[1][1]) ? roots[0] : roots[1];
     }
-}
+};
