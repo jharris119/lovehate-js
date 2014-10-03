@@ -15,11 +15,11 @@ function lovehate(canvas, opts) {
     /**
      * @constructor
      */
-    function Person(x, y, radius, vector) {
+    function Person(x, y, radius) {
         this.x = x;
         this.y = y;
         this.radius = radius;
-        this.vector = vector || [5.0, Raphael.rad(30)];
+        this.vector = null;
         this.drawn  = null;
 
         var attractedTo  = null,
@@ -121,7 +121,6 @@ function lovehate(canvas, opts) {
     Person.collides = function(p, q) {
         return p === q ? false : Math.hypot(p.x - q.x, p.y - q.y) < p.radius + q.radius;
     };
-    Person.id = 1;
 
     opts = _.extend({
         count:  5,
@@ -146,19 +145,24 @@ function lovehate(canvas, opts) {
 
     // once they're initialized, assign each one a random person to love and hate
     _.each(people, function(person) {
-        var tmp;
+        var tmp, attr, rep, attrangle, repangle;
         
         while ((tmp = _.sample(people)) === person);
-        person.attracted(tmp);
+        attr = person.attracted(tmp);
 
         while ((tmp = _.sample(people)) === person || tmp === person.attracted());
-        person.repelled(tmp);
+        rep = person.repelled(tmp);
+
+        attrangle = Raphael.angle(person.x, person.y, attr.x, attr.y);
+        repangle  = Raphael.angle(rep.x, rep.y, person.x, person.y);
+        person.vector = [5, Raphael.rad((attrangle + repangle) / 2)];
 
         person.draw();
     });
 
     function doMove(person) {
         var s = Math.polar2rect.apply(null, person.vector);
+        var collided;
         person.x += s[0];
         person.y += s[1];
 
@@ -169,8 +173,8 @@ function lovehate(canvas, opts) {
             person.vector[1] *= -1;
         }
 
-        if (_.any(people, _.partial(Person.collides, person))) {
-            console.log('collision');
+        if (collided = _.find(people, _.partial(Person.collides, person))) {
+            console.log('colliding at %O, %O', [person.x, person.y], [collided.x, collided.y]);
         }
 
         person.draw();
