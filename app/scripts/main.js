@@ -15,11 +15,11 @@ function lovehate(canvas, opts) {
     /**
      * @constructor
      */
-    function Person(x, y, radius) {
+    function Person(x, y, radius, speed) {
         this.x = x;
         this.y = y;
         this.radius = radius;
-        this.vector = null;
+        this.vector = [this.speed || 1.0, null];
         this.drawn  = null;
 
         var attractedTo  = null,
@@ -89,6 +89,10 @@ function lovehate(canvas, opts) {
             return repelledFrom;
         };
 
+        this.setVector = function() {
+            this.vector[1] = Math.atan2(attractedTo.y - this.y, attractedTo.x - this.x);
+        };
+
         this.draw = function() {
             if (!this.drawn) {
                 this.drawn = new SVGGroup();
@@ -121,6 +125,7 @@ function lovehate(canvas, opts) {
     Person.collides = function(p, q) {
         return p === q ? false : Math.hypot(p.x - q.x, p.y - q.y) < p.radius + q.radius;
     };
+    Person.id = 1;
 
     opts = _.extend({
         count:  5,
@@ -145,24 +150,20 @@ function lovehate(canvas, opts) {
 
     // once they're initialized, assign each one a random person to love and hate
     _.each(people, function(person) {
-        var tmp, attr, rep, attrangle, repangle;
+        var tmp;
         
-        while ((tmp = _.sample(people)) === person);
-        attr = person.attracted(tmp);
+        while ((tmp = _.sample(people)) === person) {}
+        person.attracted(tmp);
 
-        while ((tmp = _.sample(people)) === person || tmp === person.attracted());
-        rep = person.repelled(tmp);
-
-        attrangle = Raphael.angle(person.x, person.y, attr.x, attr.y);
-        repangle  = Raphael.angle(rep.x, rep.y, person.x, person.y);
-        person.vector = [5, Raphael.rad((attrangle + repangle) / 2)];
+        while ((tmp = _.sample(people)) === person || tmp === person.attracted()) {}
+        person.repelled(tmp);
 
         person.draw();
+        next(person);
     });
 
     function doMove(person) {
-        var s = Math.polar2rect.apply(null, person.vector);
-        var collided;
+        var s = Math.polar2rect.apply(null, person.vector), other, ltheta, htheta;
         person.x += s[0];
         person.y += s[1];
 
@@ -173,11 +174,35 @@ function lovehate(canvas, opts) {
             person.vector[1] *= -1;
         }
 
-        if (collided = _.find(people, _.partial(Person.collides, person))) {
-            console.log('colliding at %O, %O', [person.x, person.y], [collided.x, collided.y]);
-        }
+        // if (other = _.find(people, _.partial(Person.collides, person))) {
+        //     // average the love vector and the opposite of the hate vector
+        //     ltheta = Raphael.angle(person.x, person.y, person.attracted().x, person.attracted().y);
+        //     htheta = Raphael.angle(person.repelled().x, person.repelled().y, person.x, person.y);
+        //     if (ltheta + htheta > 0) {
+        //         person.vector[1] += (2 * Math.PI / 3600);
+        //     }
+        //     else {
+        //         person.vector[1] -= (2 * Math.PI / 3600);
+        //     }
+        // }
 
         person.draw();
+    }
+
+    function next(p) {
+        var other;
+
+        p.setVector();
+
+        // if we're running into someone, we need to change direction
+        if (other = _.find(people, _.partial(Person.collides, person)) {
+            
+        }
+
+        doMove(p);
+        if (!opts.step) {
+            _.delay(next, 1000 / 16, p);
+        }
     }
 
     $(document).keypress(function(evt) {
@@ -197,7 +222,7 @@ Math.polar2rect = function(r, theta) {
 
 Math.rect2polar = function(x, y) {
     'use strict';
-    return [Math.hypot(x, y), Math.atan(y / x)];
+    return [Math.hypot(x, y), Math.atan2(y, x)];
 };
 
 /**
