@@ -18,9 +18,10 @@ function lovehate(canvas, opts) {
     function Person(x, y, radius, speed) {
         this.x = x;
         this.y = y;
-        this.radius = radius;
-        this.vector = [this.speed || 1.0, null];
-        this.drawn  = null;
+        this.radius  = radius;
+        this.vector  = [this.speed || 1.0, null];
+        this.drawn   = null;
+        this.timerId = null;
 
         var attractedTo  = null,
             repelledFrom = null;
@@ -195,17 +196,31 @@ function lovehate(canvas, opts) {
         p.setVector();
 
         // if we're running into someone, we need to change direction
-        if (other = _.find(people, _.partial(Person.collides, person)) {
+        if (other = _.find(people, _.partial(Person.collides, person))) {
             
         }
 
         doMove(p);
         if (!opts.step) {
-            _.delay(next, 1000 / 16, p);
+            p.timerId = _.delay(next, delay, p);
+        }
+    }
+
+    function pause(p) {
+        if (arguments.length === 0) {
+            _.each(people, pause);
+        }
+        else if (p.timerId) {
+            clearTimeout(p.timerId);
         }
     }
 
     $(document).keypress(function(evt) {
+        if (evt.which == 80 || evt.which == 112) {
+            pause();
+            return;
+        }
+
         doMove(people[evt.which - 49]);
     });
 }
