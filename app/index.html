@@ -35,7 +35,10 @@
         <h3 class="text-muted">lovehate</h3>
       </div>
 
-      <div id="canvas" class="jumbotron">
+      <div id="canvas" class="jumbotron"></div>
+
+      <div id="controls">
+        <ul></ul>
       </div>
 
       <div class="footer">
@@ -69,7 +72,13 @@
     <script src="scripts/svgcolors.js"></script>
     <script src="scripts/main.js"></script>
     <script type="text/javascript">
-      lovehate(document.getElementById('canvas'));
+      var k  = lovehate(document.getElementById('canvas'));
+      var $e = $('#controls ul');
+
+      _.each(k, function(p, i) {
+        console.log(p);
+        $e.append(Raphael.format('<li style="color: {0}"><h3>{1}<span class="glyphicon glyphicon-pause"></span></h3></li>', p.getElement().attr('fill'), i + 1));
+      });
     </script>
     <!-- endbuild -->
 </body>

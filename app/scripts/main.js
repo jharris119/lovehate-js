@@ -111,6 +111,10 @@ function lovehate(canvas, opts) {
             return pointedAtBy;
         };
 
+        this.getElement = function() {
+            return this.drawn.circle;
+        };
+
         function moveLine(element, newcoords) {
             var p = element.attr('path'),
                 newpath = Raphael.format('M{0},{1}L{2},{3}',
@@ -133,7 +137,7 @@ function lovehate(canvas, opts) {
         radius: 10,
     }, opts || {});
 
-    _.shuffle(Colors);
+    Colors = _.shuffle(Colors);
 
     // initialize all the people
     var people = [];
@@ -197,7 +201,7 @@ function lovehate(canvas, opts) {
 
         // if we're running into someone, we need to change direction
         if (other = _.find(people, _.partial(Person.collides, person))) {
-            
+            void(0);            
         }
 
         doMove(p);
@@ -216,13 +220,15 @@ function lovehate(canvas, opts) {
     }
 
     $(document).keypress(function(evt) {
-        if (evt.which == 80 || evt.which == 112) {
+        if (evt.which === 80 || evt.which === 112) {
             pause();
             return;
         }
 
         doMove(people[evt.which - 49]);
     });
+
+    return people;
 }
 
 Math.hypot = function(x, y) {
