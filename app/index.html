@@ -92,7 +92,13 @@
         });
 
         $e.on('click', 'li', function(evt) {
-          k.pause(people[this.dataset.obj]);
+          var person = people[this.dataset.obj];
+          if (person.timerId) {
+            k.pause(person);
+          }
+          else {
+            k.next(person);
+          }
         });
         $(document).keypress(function(evt) {
           if (evt.which === 80 || evt.which === 112) {

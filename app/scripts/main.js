@@ -194,10 +194,12 @@ function lovehate(canvas, opts) {
         person.draw();
     }
 
-    function next(p) {
+    function next(p, doSetVector) {
         var other;
 
-        p.setVector();
+        if (doSetVector) {
+            p.setVector();
+        }
 
         // if we're running into someone, we need to change direction
         if (other = _.find(people, _.partial(Person.collides, person))) {
@@ -216,12 +218,14 @@ function lovehate(canvas, opts) {
         }
         else if (p.timerId) {
             clearTimeout(p.timerId);
+            p.timerId = null;
         }
     }
-    
+
     return {
         people: people,
         pause: pause,
+        next: next,
         doMove: doMove
     };
 }
