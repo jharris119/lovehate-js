@@ -218,19 +218,11 @@ function lovehate(canvas, opts) {
             clearTimeout(p.timerId);
         }
     }
-
-    $(document).keypress(function(evt) {
-        if (evt.which === 80 || evt.which === 112) {
-            pause();
-            return;
-        }
-
-        doMove(people[evt.which - 49]);
-    });
-
+    
     return {
         people: people,
-        pause: pause
+        pause: pause,
+        doMove: doMove
     };
 }
 

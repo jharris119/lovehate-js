@@ -90,8 +90,22 @@
             'ix': i
           }));
         });
+
         $e.on('click', 'li', function(evt) {
           k.pause(people[this.dataset.obj]);
+        });
+        $(document).keypress(function(evt) {
+          if (evt.which === 80 || evt.which === 112) {
+            k.pause();
+            return;
+          }
+
+          try {
+            k.doMove(people[evt.which - 49]);
+          }
+          catch(e) {
+            console.warn('Received event with "which" = ' + evt.which);
+          }
         });
       });
     </script>
