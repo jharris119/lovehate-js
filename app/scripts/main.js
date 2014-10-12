@@ -228,7 +228,10 @@ function lovehate(canvas, opts) {
         doMove(people[evt.which - 49]);
     });
 
-    return people;
+    return {
+        people: people,
+        pause: pause
+    };
 }
 
 Math.hypot = function(x, y) {

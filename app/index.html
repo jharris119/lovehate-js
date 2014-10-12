@@ -38,13 +38,13 @@
       <div id="canvas" class="jumbotron"></div>
 
       <div id="controls">
-        <ul class="list-group clearfix">
+        <ol class="list-group clearfix">
           <script id="list-template" type="text/template">
-            <ol class="list-group-item col-md-2" data-obj="${ix}" style="color: ${color}">
-              <h3><span class="glyphicon glyphicon-pause"></span></h3>
-            </ol>
+            <li class="list-group-item col-md-2" data-obj="${ix}" style="color: ${color}">
+              <h3>${ix + 1}: <span class="glyphicon glyphicon-pause"></span></h3>
+            </li>
           </script>
-        </ul>
+        </ol>
       </div>
 
       <div class="footer">
@@ -78,15 +78,20 @@
     <script type="text/javascript">
       $(document).ready(function() {
         var k  = lovehate(document.getElementById('canvas'));
-        var $e = $('#controls ul');
+        var people = k.people;
 
-        _.each(k, function(p, i) {
+        var $e = $('#controls ol');
+
+        _.each(people, function(p, i) {
           var compiled = _.template($('#list-template').html())
 
           $e.append(_.template($('#list-template').html(), {
             'color': p.getElement().attr('fill'),
             'ix': i
           }));
+        });
+        $e.on('click', 'li', function(evt) {
+          k.pause(people[this.dataset.obj]);
         });
       });
     </script>
