@@ -38,15 +38,19 @@
       <div id="canvas" class="jumbotron"></div>
 
       <div id="controls">
-        <ul class="list-group"></ul>
+        <ul class="list-group clearfix">
+          <script id="list-template" type="text/template">
+            <ol class="list-group-item col-md-2" data-obj="${ix}" style="color: ${color}">
+              <h3><span class="glyphicon glyphicon-pause"></span></h3>
+            </ol>
+          </script>
+        </ul>
       </div>
 
       <div class="footer">
         <p><span class="glyphicon glyphicon-heart"></span> from the Yeoman team</p>
       </div>
-
     </div>
-
 
     <!-- build:js(.) scripts/vendor.js -->
     <!-- bower:js -->
@@ -72,12 +76,18 @@
     <script src="scripts/svgcolors.js"></script>
     <script src="scripts/main.js"></script>
     <script type="text/javascript">
-      var k  = lovehate(document.getElementById('canvas'));
-      var $e = $('#controls ul');
+      $(document).ready(function() {
+        var k  = lovehate(document.getElementById('canvas'));
+        var $e = $('#controls ul');
 
-      _.each(k, function(p, i) {
-        console.log(p);
-        $e.append(Raphael.format('<li class="list-group-item" style="color: {0}"><h3>{1}<span class="glyphicon glyphicon-pause"></span></h3></li>', p.getElement().attr('fill'), i + 1));
+        _.each(k, function(p, i) {
+          var compiled = _.template($('#list-template').html())
+
+          $e.append(_.template($('#list-template').html(), {
+            'color': p.getElement().attr('fill'),
+            'ix': i
+          }));
+        });
       });
     </script>
     <!-- endbuild -->
