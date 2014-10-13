@@ -40,24 +40,27 @@
       <div id="controls">
         <ol class="list-group clearfix">
           <script id="list-template" type="text/template">
-            <li class="list-group-item col-md-2 col-md-pull-2" data-obj="${ix}" style="color: ${color}">
-              <h3>${ix + 1}: <span class="glyphicon glyphicon-pause"></span></h3>
+            <li class="list-group-item" data-obj="${ix}" style="color: ${color}">
+              <h3>
+                ${ix + 1}: <span class="glyphicon glyphicon-pause"></span>
+                <span class="vector" style="display: none;">
+                  &lang;${vec[0].toFixed(3)}, ${R.deg(vec[1]).toFixed(3)}&deg; or ${vec[1].toFixed(3)} rad&rang;
+                </span>
+                <span class="position" style="display: none;">
+                  &lpar;${pos[0].toFixed(0)}, ${pos[1].toFixed(0)}&rpar;
+                </span>
+              </h3>
             </li>
           </script>
-          <li class="list-group-item col-md-2 col-md-push-10">
+          <li class="list-group-item">
             <button class="btn btn-default" id="pauseplay">pause all</button>
           </li>
         </ol>
       </div>
 
-      <form role="form" class="form-horizontal">
-        <div class="form-group">
-          <label class="col-sm-2 control-label">Magnitude</label>
-          <div class="col-sm-2">
-            <p class="form-control-static">25</p>
-          </div>
-        </div>
-      </form>
+      <script id="form-template" type="text/template">
+        
+      </script>
 
       <div class="footer">
         <p><span class="glyphicon glyphicon-heart"></span> from the Yeoman team</p>
@@ -99,7 +102,13 @@
 
           $e.append(_.template($('#list-template').html(), {
             'color': p.getElement().attr('fill'),
-            'ix': i
+            'ix': i,
+            'vec': p.vector,
+            'pos': [p.x, p.y]
+          }, {
+            'imports': {
+              'R': Raphael
+            }
           }));
         });
 
@@ -107,9 +116,11 @@
           var person = people[$(evt.currentTarget).parents('li').data('obj')];
           if (person.timerId) {
             k.pause(person);
+            $('.vector, .position', $e).show();
           }
           else {
             k.next(person);
+            $('.vector, .position', $e).hide();
           }
           $(evt.currentTarget).toggleClass('glyphicon-pause glyphicon-play');
         });

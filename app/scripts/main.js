@@ -194,12 +194,10 @@ function lovehate(canvas, opts) {
         person.draw();
     }
 
-    function next(p, doSetVector) {
+    function next(p) {
         var other;
 
-        if (doSetVector) {
-            p.setVector();
-        }
+        p.setVector();
 
         // if we're running into someone, we need to change direction
         if (other = _.find(people, _.partial(Person.collides, person))) {
