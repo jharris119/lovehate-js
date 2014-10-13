@@ -40,12 +40,24 @@
       <div id="controls">
         <ol class="list-group clearfix">
           <script id="list-template" type="text/template">
-            <li class="list-group-item col-md-2" data-obj="${ix}" style="color: ${color}">
+            <li class="list-group-item col-md-2 col-md-pull-2" data-obj="${ix}" style="color: ${color}">
               <h3>${ix + 1}: <span class="glyphicon glyphicon-pause"></span></h3>
             </li>
           </script>
+          <li class="list-group-item col-md-2 col-md-push-10">
+            <button class="btn btn-default" id="pauseplay">pause all</button>
+          </li>
         </ol>
       </div>
+
+      <form role="form" class="form-horizontal">
+        <div class="form-group">
+          <label class="col-sm-2 control-label">Magnitude</label>
+          <div class="col-sm-2">
+            <p class="form-control-static">25</p>
+          </div>
+        </div>
+      </form>
 
       <div class="footer">
         <p><span class="glyphicon glyphicon-heart"></span> from the Yeoman team</p>
@@ -91,15 +103,27 @@
           }));
         });
 
-        $e.on('click', 'li', function(evt) {
-          var person = people[this.dataset.obj];
+        $e.on('click', '.glyphicon', function(evt) {
+          var person = people[$(evt.currentTarget).parents('li').data('obj')];
           if (person.timerId) {
             k.pause(person);
           }
           else {
             k.next(person);
           }
+          $(evt.currentTarget).toggleClass('glyphicon-pause glyphicon-play');
         });
+        $e.on('click', 'button#pauseplay', function(evt) {
+          if (_.any(people, function(p) { return p.timerId; })) {
+            k.pause();
+          }
+          else {
+            _.each(people, function(p) {
+              k.next(p);
+            });
+          }
+        });
+
         $(document).keypress(function(evt) {
           if (evt.which === 80 || evt.which === 112) {
             k.pause();
