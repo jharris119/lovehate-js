@@ -43,12 +43,13 @@
             <li class="list-group-item" data-obj="${ix}" style="color: ${color}">
               <h3>
                 ${ix + 1}: <span class="glyphicon glyphicon-pause"></span>
-                <span class="vector" style="display: none;">
+                <span class="onpaused vector" style="display: none;">
                   &lang;${vec[0].toFixed(3)}, ${R.deg(vec[1]).toFixed(3)}&deg; or ${vec[1].toFixed(3)} rad&rang;
                 </span>
-                <span class="position" style="display: none;">
+                <span class="onpaused position" style="display: none;">
                   &lpar;${pos[0].toFixed(0)}, ${pos[1].toFixed(0)}&rpar;
                 </span>
+                <input type="checkbox" class="onpaused highlight" style="display: none;"/> Highlight
               </h3>
             </li>
           </script>
@@ -113,11 +114,14 @@
           }));
         });
 
+        /**
+         * @this jQuery
+         */
         function onPause() {
           var $this = $(this), person = people[$this.data('obj')];
           if (person.timerId) {
             k.pause(person);
-            $('.vector, .position', $this).show();
+            $('.onpaused', $this).show();
             $('.glyphicon-pause', $this).toggleClass('glyphicon-play glyphicon-pause');
             if (++paused == people.length) {
               $('button#pauseplay').text('play all');
@@ -125,14 +129,27 @@
           }
         }
 
+        /**
+         * @this jQuery
+         */
         function onPlay() {
           var $this = $(this),person = people[$this.data('obj')];
           if (!person.timerId) {
             k.next(person);
-            $('.vector, .position', $this).hide();
+            $('.onpaused', $this).hide();
             $('.glyphicon-play', $this).toggleClass('glyphicon-play glyphicon-pause');
             $('button#pauseplay').text('pause all');
             --paused;
+          }
+        }
+
+        function onHighlight($el, state) {
+          var person = people[$el.data('obj')];
+          if (state) {
+            person.highlight();
+          }
+          else {
+            person.unhighlight();
           }
         }
 
@@ -157,6 +174,10 @@
             $e.find('li[data-obj]').each(onPlay);
           }
         });
+
+        $e.on('change', '.highlight', function(evt) {
+          onHighlight($(evt.currentTarget).parents('li'), this.checked);
+        })
 
         $(document).keypress(function(evt) {
           if (evt.which === 80 || evt.which === 112) {

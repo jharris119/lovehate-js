@@ -115,6 +115,18 @@ function lovehate(canvas, opts) {
             return this.drawn.circle;
         };
 
+        this.highlight = function() {
+            this.drawn.glow = this.drawn.circle.glow();
+            this.drawn.glow.push(paper.path(Raphael.format("M{0},{1}L{2},{3}", this.x, this.y, 150 * Math.cos(this.vector[1]), 150 * Math.sin(this.vector[1]))).attr('stroke-width', 10));
+        };
+
+        this.unhighlight = function() {
+            this.drawn.glow.forEach(function(el) {
+                el.remove();
+            });
+            delete this.drawn.glow;
+        };
+
         function moveLine(element, newcoords) {
             var p = element.attr('path'),
                 newpath = Raphael.format('M{0},{1}L{2},{3}',
