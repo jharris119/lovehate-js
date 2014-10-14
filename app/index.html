@@ -94,6 +94,7 @@
       $(document).ready(function() {
         var k  = lovehate(document.getElementById('canvas'));
         var people = k.people;
+        var paused = 0;
 
         var $e = $('#controls ol');
 
@@ -112,26 +113,48 @@
           }));
         });
 
-        $e.on('click', '.glyphicon', function(evt) {
-          var person = people[$(evt.currentTarget).parents('li').data('obj')];
+        function onPause() {
+          var $this = $(this), person = people[$this.data('obj')];
           if (person.timerId) {
             k.pause(person);
-            $('.vector, .position', $e).show();
+            $('.vector, .position', $this).show();
+            $('.glyphicon-pause', $this).toggleClass('glyphicon-play glyphicon-pause');
+            if (++paused == people.length) {
+              $('button#pauseplay').text('play all');
+            }
+          }
+        }
+
+        function onPlay() {
+          var $this = $(this),person = people[$this.data('obj')];
+          if (!person.timerId) {
+            k.next(person);
+            $('.vector, .position', $this).hide();
+            $('.glyphicon-play', $this).toggleClass('glyphicon-play glyphicon-pause');
+            $('button#pauseplay').text('pause all');
+            --paused;
+          }
+        }
+
+        $e.on('click', '.glyphicon', function(evt) {
+          var $curr = $(evt.currentTarget), $rel = $curr.parents('li');
+          if ($curr.hasClass('glyphicon-pause')) {
+            onPause.apply($rel);
+          }
+          else if ($curr.hasClass('glyphicon-play')) {
+            onPlay.apply($rel);
           }
           else {
-            k.next(person);
-            $('.vector, .position', $e).hide();
+            console.warn('No glyphicon-pause or glyphicon-play.');
           }
-          $(evt.currentTarget).toggleClass('glyphicon-pause glyphicon-play');
         });
+
         $e.on('click', 'button#pauseplay', function(evt) {
           if (_.any(people, function(p) { return p.timerId; })) {
-            k.pause();
+            $e.find('li[data-obj]').each(onPause);
           }
           else {
-            _.each(people, function(p) {
-              k.next(p);
-            });
+            $e.find('li[data-obj]').each(onPlay);
           }
         });
 
