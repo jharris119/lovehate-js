@@ -116,15 +116,22 @@ function lovehate(canvas, opts) {
         };
 
         this.highlight = function() {
+            var ep = vectorToEndPoint([this.x, this.y], [75, this.vector[1]]);
             this.drawn.glow = this.drawn.circle.glow();
-            this.drawn.glow.push(paper.path(Raphael.format("M{0},{1}L{2},{3}", this.x, this.y, 150 * Math.cos(this.vector[1]), 150 * Math.sin(this.vector[1]))).attr('stroke-width', 10));
+            this.drawn.glow.push(paper.path(
+                Raphael.format("M{0},{1}L{2},{3}", this.x, this.y, ep[0], ep[1])).attr({
+                    'stroke-width': 5,
+                    'arrow-end': 'classic-wide-long'
+                }));
         };
 
         this.unhighlight = function() {
-            this.drawn.glow.forEach(function(el) {
-                el.remove();
-            });
-            delete this.drawn.glow;
+            if (this.drawn.glow && this.drawn.glow.forEach) {
+                this.drawn.glow.forEach(function(el) {
+                    el.remove();
+                });
+                delete this.drawn.glow;                
+            }
         };
 
         function moveLine(element, newcoords) {
@@ -230,6 +237,11 @@ function lovehate(canvas, opts) {
             clearTimeout(p.timerId);
             p.timerId = null;
         }
+    }
+
+    function vectorToEndPoint(origin, vector) {
+        var x = origin[0], y = origin[1], r = vector[0], theta = vector[1];
+        return [x + (r * Math.cos(theta)), y + (r * Math.sin(theta))]
     }
 
     return {
