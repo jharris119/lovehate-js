@@ -1,4 +1,4 @@
-/* global _, Raphael, Colors */
+/* global _, Raphael, colors: true */
 /* exported lovehate */
 
 function lovehate(canvas, opts) {
@@ -22,6 +22,7 @@ function lovehate(canvas, opts) {
         this.vector  = [this.speed || 1.0, null];
         this.drawn   = null;
         this.timerId = null;
+        this.id      = Person.id++;
 
         var attractedTo  = null,
             repelledFrom = null;
@@ -36,7 +37,7 @@ function lovehate(canvas, opts) {
         function SVGGroup() {
             var pt, pathstr;
             this.circle = paper.circle(_this.x, _this.y, _this.radius - 2).attr({
-                'fill': Colors.shift(),
+                'fill': colors.shift(),
                 'stroke-width': 1
             });
 
@@ -119,7 +120,7 @@ function lovehate(canvas, opts) {
             var ep = vectorToEndPoint([this.x, this.y], [75, this.vector[1]]);
             this.drawn.glow = this.drawn.circle.glow();
             this.drawn.glow.push(paper.path(
-                Raphael.format("M{0},{1}L{2},{3}", this.x, this.y, ep[0], ep[1])).attr({
+                Raphael.format('M{0},{1}L{2},{3}', this.x, this.y, ep[0], ep[1])).attr({
                     'stroke-width': 5,
                     'arrow-end': 'classic-wide-long'
                 }));
@@ -156,7 +157,7 @@ function lovehate(canvas, opts) {
         radius: 10,
     }, opts || {});
 
-    Colors = _.shuffle(Colors);
+    colors = _.shuffle(colors);
 
     // initialize all the people
     var people = [];
@@ -169,7 +170,10 @@ function lovehate(canvas, opts) {
         }
 
         person = new Person(x, y, opts.radius/* , vector */);
-        people.unshift(person);
+        people.push(person);
+    }
+    if (opts.global) {
+        window.people = people;
     }
 
     // once they're initialized, assign each one a random person to love and hate
@@ -198,18 +202,6 @@ function lovehate(canvas, opts) {
             person.vector[1] *= -1;
         }
 
-        // if (other = _.find(people, _.partial(Person.collides, person))) {
-        //     // average the love vector and the opposite of the hate vector
-        //     ltheta = Raphael.angle(person.x, person.y, person.attracted().x, person.attracted().y);
-        //     htheta = Raphael.angle(person.repelled().x, person.repelled().y, person.x, person.y);
-        //     if (ltheta + htheta > 0) {
-        //         person.vector[1] += (2 * Math.PI / 3600);
-        //     }
-        //     else {
-        //         person.vector[1] -= (2 * Math.PI / 3600);
-        //     }
-        // }
-
         person.draw();
     }
 
@@ -219,8 +211,9 @@ function lovehate(canvas, opts) {
         p.setVector();
 
         // if we're running into someone, we need to change direction
-        if (other = _.find(people, _.partial(Person.collides, person))) {
-            void(0);            
+        if ((other = _.find(people, _.partial(Person.collides, p))) !== undefined) {
+            pause();   
+            return;       
         }
 
         doMove(p);
@@ -231,7 +224,9 @@ function lovehate(canvas, opts) {
 
     function pause(p) {
         if (arguments.length === 0) {
-            _.each(people, pause);
+            for (var i = people.length - 1; i >= 0; --i) {
+                pause(people[i]);
+            }
         }
         else if (p.timerId) {
             clearTimeout(p.timerId);
@@ -241,14 +236,13 @@ function lovehate(canvas, opts) {
 
     function vectorToEndPoint(origin, vector) {
         var x = origin[0], y = origin[1], r = vector[0], theta = vector[1];
-        return [x + (r * Math.cos(theta)), y + (r * Math.sin(theta))]
+        return [x + (r * Math.cos(theta)), y + (r * Math.sin(theta))];
     }
 
     return {
         people: people,
         pause: pause,
         next: next,
-        doMove: doMove
     };
 }
 

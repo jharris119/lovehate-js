@@ -42,14 +42,20 @@
           <script id="list-template" type="text/template">
             <li class="list-group-item" data-obj="${ix}" style="color: ${color}">
               <h3>
-                ${ix + 1}: <span class="glyphicon glyphicon-pause"></span>
-                <span class="onpaused vector" style="display: none;">
-                  &lang;${vec[0].toFixed(3)}, ${R.deg(vec[1]).toFixed(3)}&deg; or ${vec[1].toFixed(3)} rad&rang;
-                </span>
-                <span class="onpaused position" style="display: none;">
-                  &lpar;${pos[0].toFixed(0)}, ${pos[1].toFixed(0)}&rpar;
-                </span>
+                ${ix + 1}: <span class="glyphicon glyphicon-pause" style="display: none"></span>
               </h3>
+              <span class="onpaused vector" style="display: none;">
+                vector: &lang;${vec[0].toFixed(3)}, ${R.deg(vec[1]).toFixed(3)}&deg; or ${vec[1].toFixed(3)} rad&rang;
+              </span>
+              <span class="onpaused position" style="display: none;">
+                pos: &lpar;${pos[0].toFixed(0)}, ${pos[1].toFixed(0)}&rpar;
+              </span>
+              <span class="onpaused loves" style="display: none;">
+                loves: &lpar;${loves[0].toFixed(3)}, ${R.deg(loves[1]).toFixed(3)}&deg;&rpar;
+              </span>
+              <span class="onpaused hates" style="display: none;">
+                hates: &lpar;${hates[0].toFixed(3)}, ${R.deg(hates[1]).toFixed(3)}&deg;&rpar;
+              </span>
             </li>
           </script>
           <li class="list-group-item">
@@ -92,7 +98,7 @@
     <script src="scripts/main.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
-        var k  = lovehate(document.getElementById('canvas'));
+        var k  = lovehate(document.getElementById('canvas'), {'step': false, 'global': true});
         var people = k.people;
         var paused = 0;
 
@@ -105,7 +111,11 @@
             'color': p.getElement().attr('fill'),
             'ix': i,
             'vec': p.vector,
-            'pos': [p.x, p.y]
+            'pos': [p.x, p.y],
+            'loves': [Math.hypot(p.x - p.attracted().x, p.y - p.attracted().y), 
+                      Math.atan2(p.x - p.attracted().x, p.y - p.attracted().y)],
+            'hates': [Math.hypot(p.x - p.repelled().x, p.y - p.repelled().y), 
+                      Math.atan2(p.x - p.repelled().x, p.y - p.repelled().y)],
           }, {
             'imports': {
               'R': Raphael
@@ -189,7 +199,7 @@
           }
 
           try {
-            k.doMove(people[evt.which - 49]);
+            k.next(people[evt.which - 49]);
           }
           catch(e) {
             console.warn('Received event with "which" = ' + evt.which);
