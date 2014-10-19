@@ -92,7 +92,10 @@ function lovehate(canvas, opts) {
         };
 
         this.setVector = function() {
-            this.vector[1] = Math.atan2(attractedTo.y - this.y, attractedTo.x - this.x);
+            var lovedir = Math.atan2(attractedTo.y - this.y, attractedTo.x - this.x),
+                hatedir = Math.atan2(repelledFrom.y - this.y, repelledFrom.x - this.x);
+
+            this.vector[1] = normalizeAngle(lovedir + antiparallel(hatedir));
         };
 
         this.draw = function() {
@@ -212,7 +215,7 @@ function lovehate(canvas, opts) {
 
         // if we're running into someone, we need to change direction
         if ((other = _.find(people, _.partial(Person.collides, p))) !== undefined) {
-            pause();   
+            $('button#pauseplay').click();   
             return;       
         }
 
@@ -237,6 +240,22 @@ function lovehate(canvas, opts) {
     function vectorToEndPoint(origin, vector) {
         var x = origin[0], y = origin[1], r = vector[0], theta = vector[1];
         return [x + (r * Math.cos(theta)), y + (r * Math.sin(theta))];
+    }
+
+    function antiparallel(angle, isDegrees) {
+        var m = isDegrees ? 180 : Math.PI;
+        return angle <= 0 ? angle + m : angle - m;
+    }
+
+    function normalizeAngle(angle, isDegrees) {
+        var m = isDegrees ? 180 : Math.PI;
+        while (angle > m) {
+            angle -= m;
+        }
+        while (angle < m) {
+            angle += m;
+        }
+        return angle;
     }
 
     return {
