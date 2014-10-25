@@ -10,150 +10,7 @@ function lovehate(canvas, opts) {
     var height = paper.height,
         width  = paper.width;
 
-    var delay = Math.floor(1000 / 16); 
-
-    /**
-     * @constructor
-     */
-    function Person(x, y, radius, speed) {
-        this.x = x;
-        this.y = y;
-        this.radius  = radius;
-        this.vector  = [this.speed || 1.0, null];
-        this.drawn   = null;
-        this.timerId = null;
-        this.id      = Person.id++;
-
-        var attractedTo  = null,
-            repelledFrom = null;
-
-        var pointedAtBy  = []; 
-
-        var _this = this;   // closure variable
-
-        /**
-         * @constructor
-         */
-        function SVGGroup() {
-            var pt, pathstr;
-            this.circle = paper.circle(_this.x, _this.y, _this.radius - 2).attr({
-                'fill': colors.shift(),
-                'stroke-width': 1
-            });
-
-            if (attractedTo) {
-                pt = Math.circleClosest(_this, attractedTo);
-                pathstr = Raphael.format('M{0},{1}L{2},{3}', _this.x, _this.y, pt[0], pt[1]);
-                this.lovearrow = paper.path(pathstr).attr({
-                    'stroke': 'pink',
-                    'stroke-dasharray': '- ',
-                    'arrow-end': 'classic-wide-long'
-                });
-            }
-            if (repelledFrom) {
-                pt = Math.circleClosest(_this, repelledFrom);
-                pathstr = Raphael.format('M{0},{1}L{2},{3}', _this.x, _this.y, pt[0], pt[1]);
-                this.hatearrow = paper.path(pathstr).attr({
-                    'stroke': 'black',
-                    'stroke-dasharray': '. ',
-                    'arrow-end': 'classic-wide-long'
-                });
-            }
-
-            this.onMove = function() {
-                this.circle.attr({
-                    'cx': _this.x,
-                    'cy': _this.y
-                });
-
-                moveLine(this.lovearrow, { 'start': [_this.x, _this.y] });
-                moveLine(this.hatearrow, { 'start': [_this.x, _this.y] });
-                _.each(_this.getPointedAtBy(), function(person) {
-                    var el = person.attracted() === _this ? person.drawn.lovearrow : person.drawn.hatearrow;
-                    moveLine(el, { 'end': Math.circleClosest(person, _this) });
-                });
-            };
-        }
-
-        this.attracted = function(attractor) {
-            if (attractor && attractor.constructor === Person) {
-                attractedTo = attractor;
-                attractor.addConnection(this);
-            }
-            return attractedTo; 
-        };
-
-        this.repelled  = function(repellant) {
-            if (repellant && repellant.constructor === Person) {
-                repelledFrom = repellant;
-                repellant.addConnection(this);
-            }
-            return repelledFrom;
-        };
-
-        this.setVector = function() {
-            var lovedir = Math.atan2(attractedTo.y - this.y, attractedTo.x - this.x),
-                hatedir = Math.atan2(repelledFrom.y - this.y, repelledFrom.x - this.x);
-
-            this.vector[1] = normalizeAngle(lovedir + antiparallel(hatedir));
-        };
-
-        this.draw = function() {
-            if (!this.drawn) {
-                this.drawn = new SVGGroup();
-            }
-            else {
-                this.drawn.onMove();
-            }   
-        };
-
-        this.addConnection = function(connection) {
-            pointedAtBy.push(connection);
-        };
-
-        this.getPointedAtBy = function() { 
-            return pointedAtBy;
-        };
-
-        this.getElement = function() {
-            return this.drawn.circle;
-        };
-
-        this.highlight = function() {
-            var ep = vectorToEndPoint([this.x, this.y], [75, this.vector[1]]);
-            this.drawn.glow = this.drawn.circle.glow();
-            this.drawn.glow.push(paper.path(
-                Raphael.format('M{0},{1}L{2},{3}', this.x, this.y, ep[0], ep[1])).attr({
-                    'stroke-width': 5,
-                    'arrow-end': 'classic-wide-long'
-                }));
-        };
-
-        this.unhighlight = function() {
-            if (this.drawn.glow && this.drawn.glow.forEach) {
-                this.drawn.glow.forEach(function(el) {
-                    el.remove();
-                });
-                delete this.drawn.glow;                
-            }
-        };
-
-        function moveLine(element, newcoords) {
-            var p = element.attr('path'),
-                newpath = Raphael.format('M{0},{1}L{2},{3}',
-                newcoords.start ? newcoords.start[0] : p[0][1],
-                newcoords.start ? newcoords.start[1] : p[0][2],
-                newcoords.end   ? newcoords.end[0]   : p[1][1],
-                newcoords.end   ? newcoords.end[1]   : p[1][2]);
-            element.attr({
-                path: newpath
-            });
-        }
-    }
-    Person.collides = function(p, q) {
-        return p === q ? false : Math.hypot(p.x - q.x, p.y - q.y) < p.radius + q.radius;
-    };
-    Person.id = 1;
+    var delay = Math.floor(1000 / 16);  
 
     opts = _.extend({
         count:  5,
@@ -162,13 +19,15 @@ function lovehate(canvas, opts) {
 
     colors = _.shuffle(colors);
 
+    Person.id = 1;
+
     // initialize all the people
     var people = [];
     while (people.length < opts.count) {
         x = _.random(opts.radius, width - opts.radius);
         y = _.random(opts.radius, height - opts.radius);
 
-        if (_.any(people, _.partial(Person.collides, {'x': x, 'y': y, 'radius': opts.radius}))) {
+        if (_.any(people, _.partial(collides, {'x': x, 'y': y, 'radius': opts.radius}))) {
             continue;
         }
 
@@ -179,6 +38,10 @@ function lovehate(canvas, opts) {
         window.people = people;
     }
 
+    var startAll = _.after(people.length, function() {
+        console.log('startAll actually started');
+        _.each(people, next);
+    });
     // once they're initialized, assign each one a random person to love and hate
     _.each(people, function(person) {
         var tmp;
@@ -189,20 +52,43 @@ function lovehate(canvas, opts) {
         while ((tmp = _.sample(people)) === person || tmp === person.attracted()) {}
         person.repelled(tmp);
 
-        person.draw();
-        next(person);
+        person.drawn = new SVGGroup(person);
+        startAll();
     });
 
+    /**
+     * Do two people-like interface things occupy the same space?
+     *
+     * @param {{x: number, y: number, radius: number}} p - a person-like interface thing
+     * @param {{x: number, y: number, radius: number}} q - another person-like thing
+     * @return {boolean} - true if p and q occupy the same space, falsy otherwise or if p == q
+     */
+    function collides(p, q) {
+        return p === q ? null : Math.hypot(p.x - q.x, p.y - q.y) <= p.radius + q.radius;
+    }
+
     function doMove(person) {
-        var s = Math.polar2rect.apply(null, person.vector), other, ltheta, htheta;
+        var s = Math.polar2rect.apply(null, person.vector);
         person.x += s[0];
         person.y += s[1];
 
-        if (person.x - person.radius < 0 || person.x + person.radius > paper.width) {
-            person.vector[1] = Math.PI - person.vector[1];
+        // if we hit the left wall, and the person's vector points to the left, adjust it to be straight up or down
+        if (person.x - person.radius < 0 && Math.abs(person.vector[1]) > Math.PI / 2) {
+            person.vector[1] = Math.sign(person.vector[1]) * Math.PI / 2;
         }
-        if (person.y - person.radius < 0 || person.y + person.radius > paper.height) {
-            person.vector[1] *= -1;
+
+        // if we hit the right wall, same deal
+        if (person.x + person.radius > paper.width && Math.abs(person.vector[1] < Math.PI / 2)) {
+            person.vector[1] = Math.sign(person.vector[1]) * Math.PI / 2;
+        } 
+
+        // top wall
+        if (person.y - person.radius < 0 && person.vector[1] < 0) {
+            person.vector[1] = (person.vector[1] >= -Math.PI / 2 ? 0 : -Math.PI);
+        }
+
+        if (person.y + person.radius > paper.height && person.vector[1] > 0) {
+            person.vector[1] = (person.vector[1] >= Math.PI / 2 ? 0 : Math.PI);
         }
 
         person.draw();
@@ -214,7 +100,7 @@ function lovehate(canvas, opts) {
         p.setVector();
 
         // if we're running into someone, we need to change direction
-        if ((other = _.find(people, _.partial(Person.collides, p))) !== undefined) {
+        if ((other = _.find(people, _.partial(collides, p))) !== undefined) {
             $('button#pauseplay').click();   
             return;       
         }
@@ -258,11 +144,223 @@ function lovehate(canvas, opts) {
         return angle;
     }
 
+    /**
+     * Represents a Person in this game.
+     *
+     * @constructor
+     * @param {number} x - The initial x-coordinate
+     * @param {number} y - The initial y-coordinate
+     * @param {number} [radius=10] - The person's radius
+     * @param {number} [speed=1.0] - The person's speed
+     */
+    function Person(x, y, radius, speed) {
+        this.x = x;
+        this.y = y;
+        this.radius  = radius;
+        this.vector  = [speed || 1.0, null];
+
+        /** @type {!SVGGroup} */
+        this.drawn   = null;
+        /** @type {?number} */
+        this.timerId = null;
+        /** @const {number} */
+        this.id      = Person.id++;
+
+        /** @const {Person} */
+        var attractedTo  = null,
+            repelledFrom = null;
+
+        /** @const Person[] */
+        var pointedAtBy  = []; 
+
+        /**
+         * Get or set who this person loves.
+         *
+         * When called with a parameter, this method is a setter. When called 
+         * without a parameter, this method is a getter.
+         *
+         * @param {Person} [attractor] - the person that this person loves
+         * @return {Person} - the person that this person loves
+         */
+        this.attracted = function(attractor) {
+            if (attractor && attractor.constructor === Person) {
+                attractedTo = attractor;
+                attractor.getPointedAtBy().push(this);
+            }
+            return attractedTo; 
+        };
+
+        this.isAttractedTo = function(person) {
+            return attractedTo === person;
+        };
+
+        /**
+         * Get or set who this person hates.
+         *
+         * When called with a parameter, this method is a setter. When called
+         * without a parameter, this method is a getter.
+         *
+         * @param {Person} [attractor] - the person that this person hates
+         * @return {Person} - the person that this person hates
+         */
+        this.repelled  = function(repellant) {
+            if (repellant && repellant.constructor === Person) {
+                repelledFrom = repellant;
+                repellant.getPointedAtBy().push(this);
+            }
+            return repelledFrom;
+        };
+
+        this.isRepelledFrom = function(person) {
+            return repelledFrom === person;
+        };
+
+        /**
+         * Calculate and set the direction this person should move considering
+         * the locations of their loves and hates.
+         */
+        this.setVector = function() {
+            var lovedir = Math.atan2(attractedTo.y - this.y, attractedTo.x - this.x),
+                hatedir = Math.atan2(repelledFrom.y - this.y, repelledFrom.x - this.x);
+
+            this.vector[1] = normalizeAngle(lovedir + antiparallel(hatedir));
+        };
+
+        /**
+         * Draw the SVG elements associated with this person.
+         */
+        this.draw = function() {
+            if (!this.drawn) {
+                this.drawn = new SVGGroup(this);
+            }
+            else {
+                this.drawn.moveSVGElements();
+            }   
+        };
+
+        this.getPointedAtBy = function() { 
+            return pointedAtBy;
+        };
+
+        this.getElement = function() {
+            return this.drawn.circle;
+        };
+
+        this.highlight = function() {
+            var ep = vectorToEndPoint([this.x, this.y], [75, this.vector[1]]);
+            this.drawn.glow = this.drawn.circle.glow();
+            this.drawn.glow.push(paper.path(
+                Raphael.format('M{0},{1}L{2},{3}', this.x, this.y, ep[0], ep[1])).attr({
+                    'stroke-width': 5,
+                    'arrow-end': 'classic-wide-long'
+                }));
+        };
+
+        this.unhighlight = function() {
+            if (this.drawn.glow && this.drawn.glow.forEach) {
+                this.drawn.glow.forEach(function(el) {
+                    el.remove();
+                });
+                delete this.drawn.glow;                
+            }
+        };
+    }
+
+    /**
+     * The collection of SVGElements tied to this Person.
+     *
+     * @constructor
+     */
+    function SVGGroup(person) {
+        var pt, pathstr;
+        this.circle = paper.circle(person.x, person.y, person.radius - 2).attr({
+            'fill': colors.shift(),
+            'stroke-width': 1
+        });
+
+        console.assert(person.attracted());
+        pt = Math.circleClosest(person, person.attracted());
+        pathstr = Raphael.format('M{0},{1}L{2},{3}', person.x, person.y, pt[0], pt[1]);
+        this.lovearrow = paper.path(pathstr).attr({
+            'stroke': 'pink',
+            'stroke-dasharray': '- ',
+            'stroke-width': 2,
+            'arrow-end': 'classic-wide-long'
+        });
+    
+        console.assert(person.repelled());
+        pt = Math.circleClosest(person, person.repelled());
+        pathstr = Raphael.format('M{0},{1}L{2},{3}', person.x, person.y, pt[0], pt[1]);
+        this.hatearrow = paper.path(pathstr).attr({
+            'stroke': 'black',
+            'stroke-dasharray': '. ',
+            'stroke-width': 2,
+            'arrow-end': 'classic-wide-long'
+        });
+ 
+        /**
+         * Called when the person is moved.
+         */
+        this.moveSVGElements = function() {
+            var incoming;
+
+            // move the person
+            this.circle.attr({
+                'cx': person.x,
+                'cy': person.y
+            });
+
+            // move the love and hate arrows that start at the person
+            moveLine(this.lovearrow, { 'start': [person.x, person.y] });
+            moveLine(this.hatearrow, { 'start': [person.x, person.y] });
+
+            // move the arrows that terminate at the person
+            incoming = person.getPointedAtBy();
+            _.each(incoming, function(i) {
+                var arrow;
+                if (i.isAttractedTo(person)) {
+                    arrow = i.drawn.lovearrow;
+                }
+                else if (i.isRepelledFrom(person)) {
+                    arrow = i.drawn.hatearrow;
+                }
+                else {
+                    console.assert(false, 'incoming arrow must come from a lover or a hater');
+                }
+
+                moveLine(arrow, { 'end': Math.circleClosest(i, person)});
+            });
+        };
+
+        function moveLine(element, newcoords) {
+            var p = element.attr('path'),
+                newpath = Raphael.format('M{0},{1}L{2},{3}',
+                newcoords.start ? newcoords.start[0] : p[0][1],
+                newcoords.start ? newcoords.start[1] : p[0][2],
+                newcoords.end   ? newcoords.end[0]   : p[1][1],
+                newcoords.end   ? newcoords.end[1]   : p[1][2]);
+            element.attr({
+                path: newpath
+            });
+        }
+    }
+
     return {
         people: people,
         pause: pause,
         next: next,
     };
+}
+
+if (Math.sign === undefined) {
+    Math.sign = function sign(x) {
+        'use strict';
+        x = +x; // convert to a number
+        if (x === 0 || isNaN(x)) {
+            return x;
+        }
+        return x > 0 ? 1 : -1;
+    };    
 }
 
 Math.hypot = function(x, y) {
@@ -308,6 +406,9 @@ Math.solveQuadratic = function(a, b, c) {
  */
 Math.circleClosest = function(p, circle) {
     'use strict';
+
+    console.debug('Start at (%d,%d) and find the closest point on circle centered at (%d,%d)', p.x, p.y, circle.x, circle.y);
+
     var x0 = p.x, y0 = p.y;
     var x1 = circle.x, y1 = circle.y, r = circle.radius;
 
