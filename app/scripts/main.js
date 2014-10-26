@@ -44,7 +44,6 @@ function lovehate(canvas, opts) {
         }
 
         var startAll = _.after(people.length, function() {
-            console.log('startAll actually started');
             _.each(people, next);
         });
         // once they're initialized, assign each one a random person to love and hate
@@ -109,9 +108,16 @@ function lovehate(canvas, opts) {
         return angle <= 0 ? angle + m : angle - m;
     }
 
+    /**
+     * Given an angle measurement, return an equivalent angle in the range (-PI, PI]
+     *
+     * @param {number} angle - the angle
+     * @param {boolean} isDegrees - true if the angle unit is degrees, false if radians
+     * @return {number} the equivalent angle in the range of the atan2 function
+     */
     function normalizeAngle(angle, isDegrees) {
         var m = isDegrees ? 180 : Math.PI;
-        while (angle > m) {
+        while (angle >= m) {
             angle -= (2 * m);
         }
         while (angle < -(m)) {
@@ -136,11 +142,11 @@ function lovehate(canvas, opts) {
         this.vector  = [speed || 1.0, null];
 
         /** @type {!SVGGroup} */
-        this.svggroup   = null;
+        this.svggroup = null;
         /** @type {?number} */
         this.timerId = null;
         /** @const {number} */
-        this.id      = Person.id++;
+        this.id = Person.id++;
 
         /** @const {Person} */
         var attractedTo  = null,
@@ -201,19 +207,29 @@ function lovehate(canvas, opts) {
             if (this.y - this.radius < 0 && this.vector[1] < 0) {
                 this.vector[1] = (this.vector[1] >= -Math.PI / 2 ? 0 : -Math.PI);
             }
-            if (this.y + this.radius > height && this.vector[1] > 0) {
+            else if (this.y + this.radius > height && this.vector[1] > 0) {
                 this.vector[1] = (this.vector[1] >= -Math.PI / 2 ? 0 : -Math.PI);
             }
+
             if (this.x - this.radius < 0 && Math.abs(this.vector[1]) > Math.PI / 2) {
                 this.vector[1] = Math.sign(this.vector[1]) * Math.PI / 2;
             }
-            if (this.x + this.radius > width && Math.abs(this.vector[1]) < Math.PI / 2) {
+            else if (this.x + this.radius > width && Math.abs(this.vector[1]) < Math.PI / 2) {
                 this.vector[1] = Math.sign(this.vector[1]) * Math.PI / 2;
             }
 
             rect = Math.polar2rect.apply(null, this.vector);
             this.x += rect[0];
             this.y += rect[1];
+
+            if (_.any(people, _.partial(collides, this))) {
+                pause();
+                console.log('collision');
+                return;
+            }
+
+            this.x = Math.max(Math.min(this.x, width - this.radius), this.radius);
+            this.y = Math.max(Math.min(this.y, height - this.radius), this.radius);
 
             this.draw();
         };
@@ -325,14 +341,16 @@ function lovehate(canvas, opts) {
         };
 
         function moveLine(element, newcoords) {
-            var p = element.attr('path'),
-                newpath = Raphael.format('M{0},{1}L{2},{3}',
-                newcoords.start ? newcoords.start[0] : p[0][1],
-                newcoords.start ? newcoords.start[1] : p[0][2],
-                newcoords.end   ? newcoords.end[0]   : p[1][1],
-                newcoords.end   ? newcoords.end[1]   : p[1][2]);
+            var p = element.attr('path'), start, end;
+            if (p.length > 2) {
+                console.warn('path attribute contains multiple lines: %s', p);
+            }
+
+            start = newcoords.start || p[0].slice(1);
+            end   = newcoords.end   || p[1].slice(1);
+
             element.attr({
-                path: newpath
+                path: Raphael.format('M{0},{1}L{2},{3}', start[0], start[1], end[0], end[1])
             });
         }
     }
