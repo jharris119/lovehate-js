@@ -17,44 +17,51 @@ function lovehate(canvas, opts) {
         radius: 10,
     }, opts || {});
 
+    // TODO: this is a problem because "colors" is a global. what if another module also defines a global colors?
     colors = _.shuffle(colors);
 
+    /**
+     * @static
+     */
     Person.id = 1;
 
-    // initialize all the people
     var people = [];
-    while (people.length < opts.count) {
-        x = _.random(opts.radius, width - opts.radius);
-        y = _.random(opts.radius, height - opts.radius);
 
-        if (_.any(people, _.partial(collides, {'x': x, 'y': y, 'radius': opts.radius}))) {
-            continue;
+    function initialize() {
+        while (people.length < opts.count) {
+            x = _.random(opts.radius, width - opts.radius);
+            y = _.random(opts.radius, height - opts.radius);
+
+            if (_.any(people, _.partial(collides, {'x': x, 'y': y, 'radius': opts.radius}))) {
+                continue;
+            }
+
+            person = new Person(x, y, opts.radius/* , vector */);
+            people.push(person);
+        }
+        if (opts.global) {
+            window.people = people;
         }
 
-        person = new Person(x, y, opts.radius/* , vector */);
-        people.push(person);
+        var startAll = _.after(people.length, function() {
+            console.log('startAll actually started');
+            _.each(people, next);
+        });
+        // once they're initialized, assign each one a random person to love and hate
+        _.each(people, function(person) {
+            var tmp;
+            
+            while ((tmp = _.sample(people)) === person) {}
+            person.attracted(tmp);
+
+            while ((tmp = _.sample(people)) === person || tmp === person.attracted()) {}
+            person.repelled(tmp);
+
+            person.svggroup = new SVGGroup(person);
+            startAll();
+        });
     }
-    if (opts.global) {
-        window.people = people;
-    }
-
-    var startAll = _.after(people.length, function() {
-        console.log('startAll actually started');
-        _.each(people, next);
-    });
-    // once they're initialized, assign each one a random person to love and hate
-    _.each(people, function(person) {
-        var tmp;
-        
-        while ((tmp = _.sample(people)) === person) {}
-        person.attracted(tmp);
-
-        while ((tmp = _.sample(people)) === person || tmp === person.attracted()) {}
-        person.repelled(tmp);
-
-        person.drawn = new SVGGroup(person);
-        startAll();
-    });
+    initialize();
 
     /**
      * Do two people-like interface things occupy the same space?
@@ -67,47 +74,16 @@ function lovehate(canvas, opts) {
         return p === q ? null : Math.hypot(p.x - q.x, p.y - q.y) <= p.radius + q.radius;
     }
 
-    function doMove(person) {
-        var s = Math.polar2rect.apply(null, person.vector);
-        person.x += s[0];
-        person.y += s[1];
+    /**
+     * Perform the next iteration of the game on the given person.
+     *
+     * @param {Person} thePerson - the person we're moving
+     */
+    function next(thePerson) {
+        thePerson.next();
 
-        // if we hit the left wall, and the person's vector points to the left, adjust it to be straight up or down
-        if (person.x - person.radius < 0 && Math.abs(person.vector[1]) > Math.PI / 2) {
-            person.vector[1] = Math.sign(person.vector[1]) * Math.PI / 2;
-        }
-
-        // if we hit the right wall, same deal
-        if (person.x + person.radius > paper.width && Math.abs(person.vector[1] < Math.PI / 2)) {
-            person.vector[1] = Math.sign(person.vector[1]) * Math.PI / 2;
-        } 
-
-        // top wall
-        if (person.y - person.radius < 0 && person.vector[1] < 0) {
-            person.vector[1] = (person.vector[1] >= -Math.PI / 2 ? 0 : -Math.PI);
-        }
-
-        if (person.y + person.radius > paper.height && person.vector[1] > 0) {
-            person.vector[1] = (person.vector[1] >= Math.PI / 2 ? 0 : Math.PI);
-        }
-
-        person.draw();
-    }
-
-    function next(p) {
-        var other;
-
-        p.setVector();
-
-        // if we're running into someone, we need to change direction
-        if ((other = _.find(people, _.partial(collides, p))) !== undefined) {
-            $('button#pauseplay').click();   
-            return;       
-        }
-
-        doMove(p);
         if (!opts.step) {
-            p.timerId = _.delay(next, delay, p);
+            thePerson.timerId = _.delay(next, delay, thePerson);
         }
     }
 
@@ -136,10 +112,10 @@ function lovehate(canvas, opts) {
     function normalizeAngle(angle, isDegrees) {
         var m = isDegrees ? 180 : Math.PI;
         while (angle > m) {
-            angle -= m;
+            angle -= (2 * m);
         }
-        while (angle < m) {
-            angle += m;
+        while (angle < -(m)) {
+            angle += (2 * m);
         }
         return angle;
     }
@@ -160,7 +136,7 @@ function lovehate(canvas, opts) {
         this.vector  = [speed || 1.0, null];
 
         /** @type {!SVGGroup} */
-        this.drawn   = null;
+        this.svggroup   = null;
         /** @type {?number} */
         this.timerId = null;
         /** @const {number} */
@@ -215,26 +191,42 @@ function lovehate(canvas, opts) {
             return repelledFrom === person;
         };
 
-        /**
-         * Calculate and set the direction this person should move considering
-         * the locations of their loves and hates.
-         */
-        this.setVector = function() {
-            var lovedir = Math.atan2(attractedTo.y - this.y, attractedTo.x - this.x),
-                hatedir = Math.atan2(repelledFrom.y - this.y, repelledFrom.x - this.x);
+        this.next = function() {
+            var rect;
+            var lv = Math.atan2(attractedTo.y - this.y, attractedTo.x - this.x),
+                hv = Math.atan2(repelledFrom.y - this.y, repelledFrom.x - this.x);
 
-            this.vector[1] = normalizeAngle(lovedir + antiparallel(hatedir));
+            this.vector[1] = normalizeAngle(lv + antiparallel(hv));
+
+            if (this.y - this.radius < 0 && this.vector[1] < 0) {
+                this.vector[1] = (this.vector[1] >= -Math.PI / 2 ? 0 : -Math.PI);
+            }
+            if (this.y + this.radius > height && this.vector[1] > 0) {
+                this.vector[1] = (this.vector[1] >= -Math.PI / 2 ? 0 : -Math.PI);
+            }
+            if (this.x - this.radius < 0 && Math.abs(this.vector[1]) > Math.PI / 2) {
+                this.vector[1] = Math.sign(this.vector[1]) * Math.PI / 2;
+            }
+            if (this.x + this.radius > width && Math.abs(this.vector[1]) < Math.PI / 2) {
+                this.vector[1] = Math.sign(this.vector[1]) * Math.PI / 2;
+            }
+
+            rect = Math.polar2rect.apply(null, this.vector);
+            this.x += rect[0];
+            this.y += rect[1];
+
+            this.draw();
         };
 
         /**
          * Draw the SVG elements associated with this person.
          */
         this.draw = function() {
-            if (!this.drawn) {
-                this.drawn = new SVGGroup(this);
+            if (!this.svggroup) {
+                this.svggroup = new SVGGroup(this);
             }
             else {
-                this.drawn.moveSVGElements();
+                this.svggroup.moveSVGElements();
             }   
         };
 
@@ -243,13 +235,13 @@ function lovehate(canvas, opts) {
         };
 
         this.getElement = function() {
-            return this.drawn.circle;
+            return this.svggroup.circle;
         };
 
         this.highlight = function() {
             var ep = vectorToEndPoint([this.x, this.y], [75, this.vector[1]]);
-            this.drawn.glow = this.drawn.circle.glow();
-            this.drawn.glow.push(paper.path(
+            this.svggroup.glow = this.svggroup.circle.glow();
+            this.svggroup.glow.push(paper.path(
                 Raphael.format('M{0},{1}L{2},{3}', this.x, this.y, ep[0], ep[1])).attr({
                     'stroke-width': 5,
                     'arrow-end': 'classic-wide-long'
@@ -257,11 +249,11 @@ function lovehate(canvas, opts) {
         };
 
         this.unhighlight = function() {
-            if (this.drawn.glow && this.drawn.glow.forEach) {
-                this.drawn.glow.forEach(function(el) {
+            if (this.svggroup.glow && this.svggroup.glow.forEach) {
+                this.svggroup.glow.forEach(function(el) {
                     el.remove();
                 });
-                delete this.drawn.glow;                
+                delete this.svggroup.glow;                
             }
         };
     }
@@ -319,10 +311,10 @@ function lovehate(canvas, opts) {
             _.each(incoming, function(i) {
                 var arrow;
                 if (i.isAttractedTo(person)) {
-                    arrow = i.drawn.lovearrow;
+                    arrow = i.svggroup.lovearrow;
                 }
                 else if (i.isRepelledFrom(person)) {
-                    arrow = i.drawn.hatearrow;
+                    arrow = i.svggroup.hatearrow;
                 }
                 else {
                     console.assert(false, 'incoming arrow must come from a lover or a hater');
@@ -406,8 +398,6 @@ Math.solveQuadratic = function(a, b, c) {
  */
 Math.circleClosest = function(p, circle) {
     'use strict';
-
-    console.debug('Start at (%d,%d) and find the closest point on circle centered at (%d,%d)', p.x, p.y, circle.x, circle.y);
 
     var x0 = p.x, y0 = p.y;
     var x1 = circle.x, y1 = circle.y, r = circle.radius;
