@@ -202,7 +202,7 @@ function lovehate(canvas, opts) {
             var lv = Math.atan2(attractedTo.y - this.y, attractedTo.x - this.x),
                 hv = Math.atan2(repelledFrom.y - this.y, repelledFrom.x - this.x);
 
-            this.vector[1] = normalizeAngle(lv + antiparallel(hv));
+            this.vector = [1.0, normalizeAngle(lv + antiparallel(hv))];
 
             if (this.y - this.radius < 0 && this.vector[1] < 0) {
                 this.vector[1] = (this.vector[1] >= -Math.PI / 2 ? 0 : -Math.PI);
@@ -218,15 +218,14 @@ function lovehate(canvas, opts) {
                 this.vector[1] = Math.sign(this.vector[1]) * Math.PI / 2;
             }
 
+            if (_.any(people, _.partial(collides, this))) {
+                this.vector = [0.0, this.vector[1]];
+                return;
+            }
+
             rect = Math.polar2rect.apply(null, this.vector);
             this.x += rect[0];
             this.y += rect[1];
-
-            if (_.any(people, _.partial(collides, this))) {
-                pause();
-                console.log('collision');
-                return;
-            }
 
             this.x = Math.max(Math.min(this.x, width - this.radius), this.radius);
             this.y = Math.max(Math.min(this.y, height - this.radius), this.radius);
