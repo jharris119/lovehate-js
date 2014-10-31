@@ -70,7 +70,10 @@ function lovehate(canvas, opts) {
      * @return {boolean} - true if p and q occupy the same space, falsy otherwise or if p == q
      */
     function collides(p, q) {
-        return p === q ? null : Math.hypot(p.x - q.x, p.y - q.y) <= p.radius + q.radius;
+        if (p === q) {
+            return null;
+        }
+        return Math.hypot(p.x - q.x, p.y - q.y) <= p.radius + q.radius;
     }
 
     /**
@@ -218,14 +221,14 @@ function lovehate(canvas, opts) {
                 this.vector[1] = Math.sign(this.vector[1]) * Math.PI / 2;
             }
 
-            if (_.any(people, _.partial(collides, this))) {
-                this.vector = [0.0, this.vector[1]];
-                return;
-            }
-
             rect = Math.polar2rect.apply(null, this.vector);
             this.x += rect[0];
             this.y += rect[1];
+            if (_.any(people, _.partial(collides, this))) {
+                this.x -= rect[0];
+                this.y -= rect[1];
+                return;
+            }
 
             this.x = Math.max(Math.min(this.x, width - this.radius), this.radius);
             this.y = Math.max(Math.min(this.y, height - this.radius), this.radius);
