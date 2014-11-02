@@ -126,7 +126,7 @@
         $c.on('click', '#start', function(evt) {
           k.init({count: $('#people', $c).val()});
           $pauseBtn.removeClass('hidden');
-          evt.target.disabled = true;
+          evt.target.innerText = 'reset';
           return false;
         });
 

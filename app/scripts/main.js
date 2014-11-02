@@ -22,9 +22,12 @@ function lovehate(canvas, opts) {
      */
     Person.id = 1;
 
-    var people = [];
+    var people;
 
     function initialize(opts) {
+        paper.clear();
+        people = [];
+
         opts = _.extend({
             count:  5,
             radius: 10,
@@ -61,10 +64,6 @@ function lovehate(canvas, opts) {
         });
     }
 
-    function startAll() {
-        _.each(people, next);
-    }
-
     /**
      * Do two people-like interface things occupy the same space?
      *
@@ -90,6 +89,13 @@ function lovehate(canvas, opts) {
         if (!opts.step) {
             thePerson.timerId = _.delay(next, delay, thePerson);
         }
+    }
+
+    /**
+     * Start animating all people.
+     */
+    function startAll() {
+        _.each(people, next);
     }
 
     /**
