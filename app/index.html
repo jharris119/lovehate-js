@@ -37,6 +37,24 @@
 
       <div id="canvas" class="jumbotron"></div>
 
+      <form id="controls" class="form-inline" role="form">    
+        <h3 class="form-group">
+          <label class="label label-default">people</label> 
+          <input id="people" type="number" min="2" max="20" value="5" />
+        </h3>
+        <h3 class="form-group">
+          <label class="label label-default">love:hate ratio</label>
+          <input id="ratio" type="range" min="0" max="1" value="0.5" step="0.05" />
+        </h3>
+        <h3 class="form-group">
+          <button class="btn btn-default btn-lg" id="start">start</button> 
+          <button class="btn btn-default btn-lg hidden" id="pauseplay">
+            <span class="glyphicon glyphicon-pause"></span>
+          </button>
+        </h3>
+      </form>
+
+      <!--
       <div id="controls">
         <ol class="list-group clearfix">
           <script id="list-template" type="text/template">
@@ -63,6 +81,7 @@
           </li>
         </ol>
       </div>
+      -->
 
       <script id="form-template" type="text/template">
         
@@ -96,6 +115,36 @@
     <!-- build:js({app,.tmp}) scripts/*.js -->
     <script src="scripts/svgcolors.js"></script>
     <script src="scripts/main.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        var k = lovehate(document.getElementById('canvas'));
+        var paused = false;
+
+        var $c = $('#controls'), 
+            $pauseBtn = $('#pauseplay', $c);
+
+        $c.on('click', '#start', function(evt) {
+          k.init({count: $('#people', $c).val()});
+          $pauseBtn.removeClass('hidden');
+          evt.target.disabled = true;
+          return false;
+        });
+
+        $c.on('click', '#pauseplay', function(evt) {
+          $(evt.target).toggleClass('glyphicon-pause glyphicon-play')
+          if (paused) {
+            k.unpause();
+            paused = false;
+          }
+          else{
+            k.pause();
+            paused = true;
+          }
+          return false;
+        });
+      });
+    </script>
+    <!--
     <script type="text/javascript">
       $(document).ready(function() {
         var k  = lovehate(document.getElementById('canvas'), {'step': false, 'global': true});
@@ -207,6 +256,7 @@
         });
       });
     </script>
+    -->
     <!-- endbuild -->
 </body>
 </html>

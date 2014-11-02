@@ -10,12 +10,9 @@ function lovehate(canvas, opts) {
     var height = paper.height,
         width  = paper.width;
 
-    var delay = Math.floor(1000 / 16);  
+    var opts = opts || {};
 
-    opts = _.extend({
-        count:  5,
-        radius: 10,
-    }, opts || {});
+    var delay = Math.floor(1000 / 16);  
 
     // TODO: this is a problem because "colors" is a global. what if another module also defines a global colors?
     colors = _.shuffle(colors);
@@ -27,7 +24,12 @@ function lovehate(canvas, opts) {
 
     var people = [];
 
-    function initialize() {
+    function initialize(opts) {
+        opts = _.extend({
+            count:  5,
+            radius: 10,
+        }, opts || {});
+
         while (people.length < opts.count) {
             x = _.random(opts.radius, width - opts.radius);
             y = _.random(opts.radius, height - opts.radius);
@@ -39,13 +41,11 @@ function lovehate(canvas, opts) {
             person = new Person(x, y, opts.radius/* , vector */);
             people.push(person);
         }
-        if (opts.global) {
-            window.people = people;
-        }
 
-        var startAll = _.after(people.length, function() {
-            _.each(people, next);
-        });
+        // don't start animating until all people are created -- i.e., call startAll only
+        // after people.length people are created
+        var startAfter = _.after(people.length, startAll);
+
         // once they're initialized, assign each one a random person to love and hate
         _.each(people, function(person) {
             var tmp;
@@ -57,10 +57,13 @@ function lovehate(canvas, opts) {
             person.repelled(tmp);
 
             person.svggroup = new SVGGroup(person);
-            startAll();
+            startAfter();
         });
     }
-    initialize();
+
+    function startAll() {
+        _.each(people, next);
+    }
 
     /**
      * Do two people-like interface things occupy the same space?
@@ -89,17 +92,28 @@ function lovehate(canvas, opts) {
         }
     }
 
-    function pause(p) {
+    /**
+     * Pause all people or pause a specific person.
+     *
+     * @param {Person} [thePerson=undefined] - the person we're pausing, or falsy to pause all people
+     */
+    function pause(thePerson) {
         if (arguments.length === 0) {
             for (var i = people.length - 1; i >= 0; --i) {
                 pause(people[i]);
             }
         }
-        else if (p.timerId) {
-            clearTimeout(p.timerId);
-            p.timerId = null;
+        else if (thePerson.timerId) {
+            clearTimeout(thePerson.timerId);
+            thePerson.timerId = null;
         }
     }
+
+    /* ********************************************************************
+     *
+     * Mathy helper functions
+     *
+     **********************************************************************/
 
     function vectorToEndPoint(origin, vector) {
         var x = origin[0], y = origin[1], r = vector[0], theta = vector[1];
@@ -109,6 +123,82 @@ function lovehate(canvas, opts) {
     function antiparallel(angle, isDegrees) {
         var m = isDegrees ? 180 : Math.PI;
         return angle <= 0 ? angle + m : angle - m;
+    }
+
+    /**
+     * Find the real root(s) of the quadratic equation ax ^ 2 + bx + c = 0.
+     *
+     * @param Number a
+     * @param Number b
+     * @param Number c
+     * @return an array of real roots of the equation
+     */
+    function solveQuadratic(a, b, c) {
+        var det = b * b - 4 * a * c, sqrt;
+        if (det < 0) {
+            return [];
+        }
+        else if (det === 0) {
+            return [-b / 2 / a];
+        }
+        else {
+            sqrt = Math.sqrt(det);
+            return [(-b + sqrt) / (2 * a), (-b - sqrt) / (2 * a)];
+        }
+    }
+
+    /**
+     * Find the point on circle that is closest to p.
+     */
+    function circleClosest(p, circle) {
+        var x0 = p.x, y0 = p.y;
+        var x1 = circle.x, y1 = circle.y, r = circle.radius;
+
+        var roots, d0, d1;
+
+        // find the slope of the line connecting (x0,y0) and (x1,y1)
+        var m = (y1 - y0) / (x1 - x0);
+
+        // if the points are on the same vertical line, then return the point on the 
+        // circle that's also on that line and above or below the center
+        if (isNaN(m)) {
+            return p.y > y1 ? [x1, y1 + r] : [x1, y1 - r];
+        }
+
+        // frigging math:
+        // 
+        // the line connecting (x0,y0) and (x1,y1) is: y - y1 = m * (x - x1)
+        // the circle centered at (x1,y1) with radius r is: (x - x1) ^ 2 + (y - y1) ^ 2 = r ^ 2
+        //
+        // solve the top equation for y: y = m * (x - x1) + y1
+        // 
+        // substitute for y in the bottom equation, also FOIL the first term:
+        // (x ^ 2 - 2 * x1 * x + x1 ^ 2) + (m * (x - x1) + y1 - y1) ^ 2 = r ^ 2
+        //
+        // cancel out y1, square both of the remaining terms:
+        // (x ^ 2 - 2 * x1 * x + x1 ^ 2) + m ^ 2 * (x - x1) ^ 2 = r ^ 2
+        //
+        // FOIL:
+        // (x ^ 2 - 2 * x1 * x + x1 ^ 2) + m ^ 2 * (x ^ 2 - 2 * x1 * x + x1 ^ 2) = r ^ 2
+        //
+        // Distribute m ^ 2 and collect like terms:
+        // (m ^ 2 + 1) * x ^ 2 - 2 * x1 * (m ^ 2 + 1) * x + (m ^ 2 + 1) * x1 ^ 2 - r ^ 2 = 0
+        roots = solveQuadratic(m * m + 1, -2 * x1 * (m * m + 1), (m * m + 1) * x1 * x1 - r * r);
+
+        // find the coordinates' y-values by plugging them back into the point-slope equation
+        roots = _.map(roots, function(x) {
+            return [x, m * (x - x1) + y1];
+        });
+
+        // and choose the point that's closest. pick the point whose x-coordinate is closer to p.x.
+        d0 = Math.abs(p.x - roots[0][0]);
+        d1 = Math.abs(p.x - roots[1][0]);
+        if (d0 !== d1) {
+            return d0 < d1 ? roots[0] : roots[1];
+        }
+        else {
+            return Math.abs(p.y - roots[0][1]) < Math.abs(p.y - roots[1][1]) ? roots[0] : roots[1];
+        }
     }
 
     /**
@@ -289,7 +379,7 @@ function lovehate(canvas, opts) {
         });
 
         console.assert(person.attracted());
-        pt = Math.circleClosest(person, person.attracted());
+        pt = circleClosest(person, person.attracted());
         pathstr = Raphael.format('M{0},{1}L{2},{3}', person.x, person.y, pt[0], pt[1]);
         this.lovearrow = paper.path(pathstr).attr({
             'stroke': 'pink',
@@ -299,7 +389,7 @@ function lovehate(canvas, opts) {
         });
     
         console.assert(person.repelled());
-        pt = Math.circleClosest(person, person.repelled());
+        pt = circleClosest(person, person.repelled());
         pathstr = Raphael.format('M{0},{1}L{2},{3}', person.x, person.y, pt[0], pt[1]);
         this.hatearrow = paper.path(pathstr).attr({
             'stroke': 'black',
@@ -338,7 +428,7 @@ function lovehate(canvas, opts) {
                     console.assert(false, 'incoming arrow must come from a lover or a hater');
                 }
 
-                moveLine(arrow, { 'end': Math.circleClosest(i, person)});
+                moveLine(arrow, { 'end': circleClosest(i, person)});
             });
         };
 
@@ -358,8 +448,10 @@ function lovehate(canvas, opts) {
     }
 
     return {
+        init: initialize,
         people: people,
         pause: pause,
+        unpause: startAll,
         next: next,
     };
 }
@@ -375,97 +467,23 @@ if (Math.sign === undefined) {
     };    
 }
 
-Math.hypot = function(x, y) {
-    'use strict';
-    return Math.sqrt(x * x + y * y);
-};
+if (Math.hypot === undefined) {
+    Math.hypot = function(x, y) {
+        'use strict';
+        return Math.sqrt(x * x + y * y);
+    };
+}
 
-Math.polar2rect = function(r, theta) {
-    'use strict';
-    return [r * Math.cos(theta), r * Math.sin(theta)];
-};
-
-Math.rect2polar = function(x, y) {
-    'use strict';
-    return [Math.hypot(x, y), Math.atan2(y, x)];
-};
-
-/**
- * Find the real root(s) of the quadratic equation ax ^ 2 + bx + c = 0.
- *
- * @param Number a
- * @param Number b
- * @param Number c
- * @return an array of real roots of the equation
- */
-Math.solveQuadratic = function(a, b, c) {
-    'use strict';
-    var det = b * b - 4 * a * c, sqrt;
-    if (det < 0) {
-        return [];
-    }
-    else if (det === 0) {
-        return [-b / 2 / a];
-    }
-    else {
-        sqrt = Math.sqrt(det);
-        return [(-b + sqrt) / (2 * a), (-b - sqrt) / (2 * a)];
-    }
-};
-
-/**
- * Find the point on circle that is closest to p.
- */
-Math.circleClosest = function(p, circle) {
-    'use strict';
-
-    var x0 = p.x, y0 = p.y;
-    var x1 = circle.x, y1 = circle.y, r = circle.radius;
-
-    var roots, d0, d1;
-
-    // find the slope of the line connecting (x0,y0) and (x1,y1)
-    var m = (y1 - y0) / (x1 - x0);
-
-    // if the points are on the same vertical line, then return the point on the 
-    // circle that's also on that line and above or below the center
-    if (isNaN(m)) {
-        return p.y > y1 ? [x1, y1 + r] : [x1, y1 - r];
-    }
-
-    // frigging math:
-    // 
-    // the line connecting (x0,y0) and (x1,y1) is: y - y1 = m * (x - x1)
-    // the circle centered at (x1,y1) with radius r is: (x - x1) ^ 2 + (y - y1) ^ 2 = r ^ 2
-    //
-    // solve the top equation for y: y = m * (x - x1) + y1
-    // 
-    // substitute for y in the bottom equation, also FOIL the first term:
-    // (x ^ 2 - 2 * x1 * x + x1 ^ 2) + (m * (x - x1) + y1 - y1) ^ 2 = r ^ 2
-    //
-    // cancel out y1, square both of the remaining terms:
-    // (x ^ 2 - 2 * x1 * x + x1 ^ 2) + m ^ 2 * (x - x1) ^ 2 = r ^ 2
-    //
-    // FOIL:
-    // (x ^ 2 - 2 * x1 * x + x1 ^ 2) + m ^ 2 * (x ^ 2 - 2 * x1 * x + x1 ^ 2) = r ^ 2
-    //
-    // Distribute m ^ 2 and collect like terms:
-    // (m ^ 2 + 1) * x ^ 2 - 2 * x1 * (m ^ 2 + 1) * x + (m ^ 2 + 1) * x1 ^ 2 - r ^ 2 = 0
-
-    roots = Math.solveQuadratic(m * m + 1, -2 * x1 * (m * m + 1), (m * m + 1) * x1 * x1 - r * r);
-
-    // find the coordinates' y-values by plugging them back into the point-slope equation
-    roots = _.map(roots, function(x) {
-        return [x, m * (x - x1) + y1];
-    });
-
-    // and choose the point that's closest. pick the point whose x-coordinate is closer to p.x.
-    d0 = Math.abs(p.x - roots[0][0]);
-    d1 = Math.abs(p.x - roots[1][0]);
-    if (d0 !== d1) {
-        return d0 < d1 ? roots[0] : roots[1];
-    }
-    else {
-        return Math.abs(p.y - roots[0][1]) < Math.abs(p.y - roots[1][1]) ? roots[0] : roots[1];
-    }
-};
+if (Math.polar2rect === undefined) {
+    Math.polar2rect = function(r, theta) {
+        'use strict';
+        return [r * Math.cos(theta), r * Math.sin(theta)];
+    };
+}
+    
+if (Math.rect2polar === undefined) {
+    Math.rect2polar = function(x, y) {
+        'use strict';
+        return [Math.hypot(x, y), Math.atan2(y, x)];
+    };
+}
