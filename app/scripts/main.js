@@ -14,7 +14,6 @@ function lovehate(canvas, opts) {
 
     var delay = Math.floor(1000 / 16);  
 
-    // TODO: this is a problem because "colors" is a global. what if another module also defines a global colors?
     colors = _.shuffle(colors);
 
     /**
@@ -24,6 +23,12 @@ function lovehate(canvas, opts) {
 
     var people;
 
+    /**
+     * Initialization function.
+     *
+     * @public
+     * @param {{count: Number, radius: Number}} - initial parameters
+     */
     function initialize(opts) {
         paper.clear();
         people = [];
@@ -67,8 +72,8 @@ function lovehate(canvas, opts) {
     /**
      * Do two people-like interface things occupy the same space?
      *
-     * @param {{x: number, y: number, radius: number}} p - a person-like interface thing
-     * @param {{x: number, y: number, radius: number}} q - another person-like thing
+     * @param {{x: Number, y: Number, radius: Number}} p - a person-like interface thing
+     * @param {{x: Number, y: Number, radius: Number}} q - another person-like thing
      * @return {boolean} - true if p and q occupy the same space, falsy otherwise or if p == q
      */
     function collides(p, q) {
@@ -93,6 +98,8 @@ function lovehate(canvas, opts) {
 
     /**
      * Start animating all people.
+     *
+     * @public
      */
     function startAll() {
         _.each(people, next);
@@ -101,7 +108,7 @@ function lovehate(canvas, opts) {
     /**
      * Pause all people or pause a specific person.
      *
-     * @param {Person} [thePerson=undefined] - the person we're pausing, or falsy to pause all people
+     * @param {Person} [thePerson] - the person we're pausing, or falsy to pause all people
      */
     function pause(thePerson) {
         if (arguments.length === 0) {
@@ -115,12 +122,28 @@ function lovehate(canvas, opts) {
         }
     }
 
+    /**
+     * Pause the entire animation.
+     *
+     * @public
+     */
+    function pauseAll() {
+        pause();
+    }
+
     /* ********************************************************************
      *
      * Mathy helper functions
      *
      **********************************************************************/
-
+     /**
+      * Apply the given vector to the origin point, and return the resulting
+      * Cartesian coordinates.
+      *
+      * @param {Number[]} origin - the origin point in Cartesian coordinates
+      * @oaram {Number[]} vector - the vector in polar coordinates, in radians
+      * @return {Number[]} the resultant point, in Cartesian coordinates
+      */
     function vectorToEndPoint(origin, vector) {
         var x = origin[0], y = origin[1], r = vector[0], theta = vector[1];
         return [x + (r * Math.cos(theta)), y + (r * Math.sin(theta))];
@@ -134,10 +157,10 @@ function lovehate(canvas, opts) {
     /**
      * Find the real root(s) of the quadratic equation ax ^ 2 + bx + c = 0.
      *
-     * @param Number a
-     * @param Number b
-     * @param Number c
-     * @return an array of real roots of the equation
+     * @param {Number} a
+     * @param {Number} b
+     * @param {Number} c
+     * @return {Number[]} an array of real roots of the equation
      */
     function solveQuadratic(a, b, c) {
         var det = b * b - 4 * a * c, sqrt;
@@ -155,6 +178,10 @@ function lovehate(canvas, opts) {
 
     /**
      * Find the point on circle that is closest to p.
+     *
+     * @param {{x: Number, y: Number}} p - a point-like object
+     * @param {{x: Number, y: Number, radius: Number}} - a circle-like object
+     * @return Number[] - the Cartesian coordinates of the point on the circle closest to p
      */
     function circleClosest(p, circle) {
         var x0 = p.x, y0 = p.y;
@@ -210,9 +237,9 @@ function lovehate(canvas, opts) {
     /**
      * Given an angle measurement, return an equivalent angle in the range (-PI, PI]
      *
-     * @param {number} angle - the angle
-     * @param {boolean} isDegrees - true if the angle unit is degrees, false if radians
-     * @return {number} the equivalent angle in the range of the atan2 function
+     * @param {Number} angle - the angle
+     * @param {Boolean} isDegrees - true if the angle unit is degrees, false if radians
+     * @return {Number} the equivalent angle in the range of the atan2 function
      */
     function normalizeAngle(angle, isDegrees) {
         var m = isDegrees ? 180 : Math.PI;
@@ -229,10 +256,10 @@ function lovehate(canvas, opts) {
      * Represents a Person in this game.
      *
      * @constructor
-     * @param {number} x - The initial x-coordinate
-     * @param {number} y - The initial y-coordinate
-     * @param {number} [radius=10] - The person's radius
-     * @param {number} [speed=1.0] - The person's speed
+     * @param {Number} x - The initial x-coordinate
+     * @param {Number} y - The initial y-coordinate
+     * @param {Number} [radius=10] - The person's radius
+     * @param {Number} [speed=1.0] - The person's speed
      */
     function Person(x, y, radius, speed) {
         this.x = x;
@@ -455,10 +482,8 @@ function lovehate(canvas, opts) {
 
     return {
         init: initialize,
-        people: people,
-        pause: pause,
+        pause: pauseAll,
         unpause: startAll,
-        next: next,
     };
 }
 

@@ -29,8 +29,6 @@
       <div class="header">
         <ul class="nav nav-pills pull-right">
           <li class="active"><a href="#">Home</a></li>
-          <li><a href="#">About</a></li>
-          <li><a href="#">Contact</a></li>
         </ul>
         <h3 class="text-muted">lovehate</h3>
       </div>
@@ -43,53 +41,12 @@
           <input id="people" type="number" min="2" max="20" value="5" />
         </h3>
         <h3 class="form-group">
-          <label class="label label-default">love:hate ratio</label>
-          <input id="ratio" type="range" min="0" max="1" value="0.5" step="0.05" />
-        </h3>
-        <h3 class="form-group">
           <button class="btn btn-default btn-lg" id="start">start</button> 
           <button class="btn btn-default btn-lg hidden" id="pauseplay">
             <span class="glyphicon glyphicon-pause"></span>
           </button>
         </h3>
       </form>
-
-      <!--
-      <div id="controls">
-        <ol class="list-group clearfix">
-          <script id="list-template" type="text/template">
-            <li class="list-group-item" data-obj="${ix}" style="color: ${color}">
-              <h3>
-                ${ix + 1}: <span class="glyphicon glyphicon-pause" style="display: none"></span>
-              </h3>
-              <span class="onpaused vector" style="display: none;">
-                vector: &lang;${vec[0].toFixed(3)}, ${R.deg(vec[1]).toFixed(3)}&deg; or ${vec[1].toFixed(3)} rad&rang;
-              </span>
-              <span class="onpaused position" style="display: none;">
-                pos: &lpar;${pos[0].toFixed(0)}, ${pos[1].toFixed(0)}&rpar;
-              </span>
-              <span class="onpaused loves" style="display: none;">
-                loves: &lpar;${loves[0].toFixed(3)}, ${R.deg(loves[1]).toFixed(3)}&deg;&rpar;
-              </span>
-              <span class="onpaused hates" style="display: none;">
-                hates: &lpar;${hates[0].toFixed(3)}, ${R.deg(hates[1]).toFixed(3)}&deg;&rpar;
-              </span>
-            </li>
-          </script>
-          <li class="list-group-item">
-            <button class="btn btn-default" id="pauseplay">pause all</button>
-          </li>
-        </ol>
-      </div>
-      -->
-
-      <script id="form-template" type="text/template">
-        
-      </script>
-
-      <div class="footer">
-        <p><span class="glyphicon glyphicon-heart"></span> from the Yeoman team</p>
-      </div>
     </div>
 
     <!-- build:js(.) scripts/vendor.js -->
@@ -144,119 +101,6 @@
         });
       });
     </script>
-    <!--
-    <script type="text/javascript">
-      $(document).ready(function() {
-        var k  = lovehate(document.getElementById('canvas'), {'step': false, 'global': true});
-        var people = k.people;
-        var paused = 0;
-
-        var $e = $('#controls ol');
-
-        _.each(people, function(p, i) {
-          var compiled = _.template($('#list-template').html())
-
-          $e.append(_.template($('#list-template').html(), {
-            'color': p.getElement().attr('fill'),
-            'ix': i,
-            'vec': p.vector,
-            'pos': [p.x, p.y],
-            'loves': [Math.hypot(p.x - p.attracted().x, p.y - p.attracted().y), 
-                      Math.atan2(p.x - p.attracted().x, p.y - p.attracted().y)],
-            'hates': [Math.hypot(p.x - p.repelled().x, p.y - p.repelled().y), 
-                      Math.atan2(p.x - p.repelled().x, p.y - p.repelled().y)],
-          }, {
-            'imports': {
-              'R': Raphael
-            }
-          }));
-        });
-
-        /**
-         * @this jQuery
-         */
-        function onPause() {
-          var $this = $(this), person = people[$this.data('obj')];
-          if (person.timerId) {
-            k.pause(person);
-            $('.onpaused', $this).show();
-            $('.glyphicon-pause', $this).toggleClass('glyphicon-play glyphicon-pause');
-            if (++paused == people.length) {
-              $('button#pauseplay').text('play all');
-            }
-          }
-        }
-
-        /**
-         * @this jQuery
-         */
-        function onPlay() {
-          var $this = $(this),person = people[$this.data('obj')];
-          if (!person.timerId) {
-            k.next(person);
-            $('.onpaused', $this).hide();
-            $('.glyphicon-play', $this).toggleClass('glyphicon-play glyphicon-pause');
-            $('button#pauseplay').text('pause all');
-            --paused;
-          }
-        }
-
-        function onHighlight($el, state) {
-          var person = people[$el.data('obj')];
-          if (state && !person.timerId && paused == people.length) {
-            person.highlight();
-          }
-          else {
-            person.unhighlight();
-          }
-        }
-
-        $e.on('click', '.glyphicon', function(evt) {
-          var $curr = $(evt.currentTarget), $rel = $curr.parents('li');
-          if ($curr.hasClass('glyphicon-pause')) {
-            onPause.apply($rel);
-          }
-          else if ($curr.hasClass('glyphicon-play')) {
-            onPlay.apply($rel);
-          }
-          else {
-            console.warn('No glyphicon-pause or glyphicon-play.');
-          }
-        });
-
-        $e.on('click', 'button#pauseplay', function(evt) {
-          if (_.any(people, function(p) { return p.timerId; })) {
-            $e.find('li[data-obj]').each(onPause);
-          }
-          else {
-            $e.find('li[data-obj]').each(onPlay);
-          }
-        });
-
-        $e.on('mouseover', 'li[data-obj]', function(evt) {
-          onHighlight($(evt.currentTarget), true);
-        });
-
-        $e.on('mouseout', 'li[data-obj]', function(evt) {
-          onHighlight($(evt.currentTarget), false);
-        });
-
-        $(document).keypress(function(evt) {
-          if (evt.which === 80 || evt.which === 112) {
-            k.pause();
-            return;
-          }
-
-          try {
-            k.next(people[evt.which - 49]);
-          }
-          catch(e) {
-            console.warn('Received event with "which" = ' + evt.which);
-          }
-        });
-      });
-    </script>
-    -->
     <!-- endbuild -->
 </body>
 </html>
