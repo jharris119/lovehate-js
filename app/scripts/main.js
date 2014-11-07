@@ -22,10 +22,13 @@ function lovehate(canvas, opts) {
     var people;
 
     /**
-     * Initialization function.
+     * Initialize the game.
      *
      * @public
      * @param {{count: number, radius: number}} opts - initialization options
+     *    count: number of people in the game
+     *    radius: the radius of each person
+     *    step: don't animate, instead wait for manual `next` function call
      */
     function initialize(opts) {
         paper.clear();
@@ -48,11 +51,8 @@ function lovehate(canvas, opts) {
             people.push(person);
         }
 
-        // Don't start animating until all people are created -- i.e., call startAll only
-        // after people.length people are created.
-        var startAfter = _.after(people.length, startAll);
-
-        // Once they're all initialized, assign each one a random person to love and hate.
+        // Once all the people are instantiated, we can assign each one someone to love and hate.
+        var startafter;
         _.each(people, function(person) {
             var tmp;
             
@@ -63,16 +63,18 @@ function lovehate(canvas, opts) {
             person.repelled(tmp);
 
             person.svggroup = new SVGGroup(person);
-            startAfter();
+            // Don't start animating until everyone is assigned someone to love and hate.
+            (startafter = startafter || _.after(people.length, startAll)).call();
         });
     }
 
     /**
-     * Do two people-like interface things occupy the same space?
+     * Determine if two people overlap on the canvas.
      *
-     * @param {{x: Number, y: Number, radius: Number}} p - a person-like interface thing
-     * @param {{x: Number, y: Number, radius: Number}} q - another person-like thing
-     * @return {boolean} - true if p and q occupy the same space, falsy otherwise or if p == q
+     * @private
+     * @param {{x: number, y: number, radius: number}} p - a Person interface
+     * @param {{x: number, y: number, radius: number}} q - another Person interface
+     * @return {boolean} - true if p and q occupy the same space, false otherwise
      */
     function collides(p, q) {
         return Math.hypot(p.x - q.x, p.y - q.y) <= p.radius + q.radius;
@@ -126,23 +128,23 @@ function lovehate(canvas, opts) {
         pause();
     }
 
-    /* ********************************************************************
+    /**
+     * Determine the direction of a vector antiparallel to a given angle.
      *
-     * Mathy helper functions
-     *
-     **********************************************************************/
-    function antiparallel(angle, isDegrees) {
-        var m = isDegrees ? 180 : Math.PI;
-        return angle <= 0 ? angle + m : angle - m;
+     * @param {number} theta - angle in radians, -pi <= theta < pi
+     * @return {number} - antiparallel angle in radians, -pi < theta <= pi
+     */
+    function antiparallel(theta) {
+        return theta <= 0 ? theta + Math.PI : theta - Math.PI;
     }
 
     /**
      * Find the real root(s) of the quadratic equation ax ^ 2 + bx + c = 0.
      *
-     * @param {Number} a
-     * @param {Number} b
-     * @param {Number} c
-     * @return {Number[]} an array of real roots of the equation
+     * @param {number} a - the coefficient of the squared term
+     * @param {number} b - the coefficient of the linear term
+     * @param {number} c - the coefficient of the constant term
+     * @return {number[]} an array of real roots of the equation
      */
     function solveQuadratic(a, b, c) {
         var det = b * b - 4 * a * c, sqrt;
@@ -161,9 +163,9 @@ function lovehate(canvas, opts) {
     /**
      * Find the point on circle that is closest to p.
      *
-     * @param {{x: Number, y: Number}} p - a point-like object
-     * @param {{x: Number, y: Number, radius: Number}} - a circle-like object
-     * @return Number[] - the Cartesian coordinates of the point on the circle closest to p
+     * @param {{x: nubmer, y: number}} p - a point
+     * @param {{x: number, y: number, radius: number}} - a circle centered at (x,y) with the given radius
+     * @return number[] - the Cartesian coordinates of the point on the circle closest to p
      */
     function circleClosest(p, circle) {
         var x0 = p.x, y0 = p.y;
@@ -217,22 +219,22 @@ function lovehate(canvas, opts) {
     }
 
     /**
-     * Given an angle measurement, return an equivalent angle in the range (-PI, PI]
+     * Given an angle measurement in radians, return an equivalent angle in the range (-PI, PI]
      *
-     * @param {Number} angle - the angle
-     * @param {Boolean} isDegrees - true if the angle unit is degrees, false if radians
-     * @return {Number} the equivalent angle in the range of the atan2 function
+     * @param {number} angle - the angle
+     * @return {number} the equivalent angle in the range of the atan2 function
      */
-    function normalizeAngle(angle, isDegrees) {
-        var m = isDegrees ? 180 : Math.PI;
-        while (angle >= m) {
-            angle -= (2 * m);
+    function normalizeAngle(angle) {
+        while (angle >= Math.PI) {
+            angle -= (2 * Math.PI);
         }
-        while (angle < -(m)) {
-            angle += (2 * m);
+        while (angle < -(Math.PI)) {
+            angle += (2 * Math.PI);
         }
         return angle;
     }
+
+    /*--------------------------------------------------------------------------*/
 
     /**
      * Represents a Person in this game.
