@@ -4,22 +4,20 @@
 function lovehate(canvas, opts) {
     'use strict';
 
-    var paper = Raphael(canvas, 550, 300);  // jshint ignore:line
+    var opts = _.extend({
+        height: canvas.height,
+        width:  canvas.width
+    }, opts || {});
+
+    var paper = Raphael(canvas, opts.height, opts.width);  // jshint ignore:line
     var x, y, person;
 
     var height = paper.height,
         width  = paper.width;
 
-    var opts = opts || {};
-
     var delay = Math.floor(1000 / 16);  
 
     colors = _.shuffle(colors);
-
-    /**
-     * @static
-     */
-    Person.id = 1;
 
     var people;
 
@@ -27,7 +25,7 @@ function lovehate(canvas, opts) {
      * Initialization function.
      *
      * @public
-     * @param {{count: Number, radius: Number}} - initial parameters
+     * @param {{count: number, radius: number}} opts - initialization options
      */
     function initialize(opts) {
         paper.clear();
@@ -50,11 +48,11 @@ function lovehate(canvas, opts) {
             people.push(person);
         }
 
-        // don't start animating until all people are created -- i.e., call startAll only
-        // after people.length people are created
+        // Don't start animating until all people are created -- i.e., call startAll only
+        // after people.length people are created.
         var startAfter = _.after(people.length, startAll);
 
-        // once they're initialized, assign each one a random person to love and hate
+        // Once they're all initialized, assign each one a random person to love and hate.
         _.each(people, function(person) {
             var tmp;
             
@@ -136,19 +134,6 @@ function lovehate(canvas, opts) {
      * Mathy helper functions
      *
      **********************************************************************/
-     /**
-      * Apply the given vector to the origin point, and return the resulting
-      * Cartesian coordinates.
-      *
-      * @param {Number[]} origin - the origin point in Cartesian coordinates
-      * @oaram {Number[]} vector - the vector in polar coordinates, in radians
-      * @return {Number[]} the resultant point, in Cartesian coordinates
-      */
-    function vectorToEndPoint(origin, vector) {
-        var x = origin[0], y = origin[1], r = vector[0], theta = vector[1];
-        return [x + (r * Math.cos(theta)), y + (r * Math.sin(theta))];
-    }
-
     function antiparallel(angle, isDegrees) {
         var m = isDegrees ? 180 : Math.PI;
         return angle <= 0 ? angle + m : angle - m;
@@ -256,10 +241,10 @@ function lovehate(canvas, opts) {
      * Represents a Person in this game.
      *
      * @constructor
-     * @param {Number} x - The initial x-coordinate
-     * @param {Number} y - The initial y-coordinate
-     * @param {Number} [radius=10] - The person's radius
-     * @param {Number} [speed=1.0] - The person's speed
+     * @param {number} x - The initial x-coordinate
+     * @param {number} y - The initial y-coordinate
+     * @param {number} radius - The person's radius
+     * @param {number} [speed=1.0] - The person's speed
      */
     function Person(x, y, radius, speed) {
         this.x = x;
@@ -347,10 +332,11 @@ function lovehate(canvas, opts) {
             rect = Math.polar2rect.apply(null, this.vector);
             this.x += rect[0];
             this.y += rect[1];
+
             if (_.any(people, _.partial(collides, this))) {
-                this.x -= rect[0];
-                this.y -= rect[1];
-                return;
+              this.x -= rect[0];
+              this.y -= rect[1];
+              return;
             }
 
             this.x = Math.max(Math.min(this.x, width - this.radius), this.radius);
@@ -377,25 +363,6 @@ function lovehate(canvas, opts) {
 
         this.getElement = function() {
             return this.svggroup.circle;
-        };
-
-        this.highlight = function() {
-            var ep = vectorToEndPoint([this.x, this.y], [75, this.vector[1]]);
-            this.svggroup.glow = this.svggroup.circle.glow();
-            this.svggroup.glow.push(paper.path(
-                Raphael.format('M{0},{1}L{2},{3}', this.x, this.y, ep[0], ep[1])).attr({
-                    'stroke-width': 5,
-                    'arrow-end': 'classic-wide-long'
-                }));
-        };
-
-        this.unhighlight = function() {
-            if (this.svggroup.glow && this.svggroup.glow.forEach) {
-                this.svggroup.glow.forEach(function(el) {
-                    el.remove();
-                });
-                delete this.svggroup.glow;                
-            }
         };
     }
 
@@ -479,6 +446,10 @@ function lovehate(canvas, opts) {
             });
         }
     }
+    /**
+     * @static
+     */
+    Person.id = 1;
 
     return {
         init: initialize,
