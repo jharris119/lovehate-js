@@ -93,7 +93,7 @@
           return false;
         });
 
-        $c.on('click', '#pauseplay', function(evt) {
+        $c.on('click', '#pauseplay span', function(evt) {
           $(evt.target).toggleClass('glyphicon-pause glyphicon-play')
           if (paused) {
             k.unpause();
