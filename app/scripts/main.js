@@ -330,14 +330,7 @@ function lovehate(canvas, opts) {
             this.x += rect[0];
             this.y += rect[1];
 
-            var sameOrNotCollides = function(p, q) {
-                if (p === q) {
-                    return false;
-                }
-                return collides(p, q);
-            };
-
-            if (_.any(people, _.partial(sameOrNotCollides, this))) {
+            if (_.any(people, _.partial(function(p, q) { return p !== q && collides(p, q); }, this))) {
                 this.x -= rect[0];
                 this.y -= rect[1];
                 return;
