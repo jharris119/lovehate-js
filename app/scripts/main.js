@@ -261,9 +261,6 @@ function lovehate(canvas, opts) {
         var attractedTo  = null,
             repelledFrom = null;
 
-        /** @const Person[] */
-        var pointedAtBy  = []; 
-
         /**
          * Get or set who this person loves.
          *
@@ -276,7 +273,6 @@ function lovehate(canvas, opts) {
         this.attracted = function(attractor) {
             if (attractor && attractor.constructor === Person) {
                 attractedTo = attractor;
-                attractor.getPointedAtBy().push(this);
             }
             return attractedTo; 
         };
@@ -297,7 +293,6 @@ function lovehate(canvas, opts) {
         this.repelled  = function(repellant) {
             if (repellant && repellant.constructor === Person) {
                 repelledFrom = repellant;
-                repellant.getPointedAtBy().push(this);
             }
             return repelledFrom;
         };
@@ -334,7 +329,6 @@ function lovehate(canvas, opts) {
             if (_.any(people, _.partial(function(p, q) { return p !== q && collides(p, q); }, this))) {
                 this.x -= rect[0];
                 this.y -= rect[1];
-                return;
             }
 
             this.x = Math.max(Math.min(this.x, width - this.radius), this.radius);
