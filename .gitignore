@@ -1,5 +1,6 @@
 node_modules
 dist
+.editorconfig
 .tmp
 .sass-cache
 bower_components

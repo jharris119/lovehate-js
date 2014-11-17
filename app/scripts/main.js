@@ -71,7 +71,6 @@ function lovehate(canvas, opts) {
     /**
      * Determine if two people overlap on the canvas.
      *
-     * @private
      * @param {{x: number, y: number, radius: number}} p - a Person interface
      * @param {{x: number, y: number, radius: number}} q - another Person interface
      * @return {boolean} - true if p and q occupy the same space, false otherwise
@@ -401,49 +400,24 @@ function lovehate(canvas, opts) {
          * Called when the person is moved.
          */
         this.moveSVGElements = function() {
-            var incoming;
-
             // move the person
             this.circle.attr({
                 'cx': person.x,
                 'cy': person.y
             });
 
-            // move the love and hate arrows that start at the person
-            moveLine(this.lovearrow, { 'start': [person.x, person.y] });
-            moveLine(this.hatearrow, { 'start': [person.x, person.y] });
+            var attractedpt = circleClosest(person, person.attracted());
+            var repelledpt = circleClosest(person, person.repelled());
 
-            // move the arrows that terminate at the person
-            incoming = person.getPointedAtBy();
-            _.each(incoming, function(i) {
-                var arrow;
-                if (i.isAttractedTo(person)) {
-                    arrow = i.svggroup.lovearrow;
-                }
-                else if (i.isRepelledFrom(person)) {
-                    arrow = i.svggroup.hatearrow;
-                }
-                else {
-                    console.assert(false, 'incoming arrow must come from a lover or a hater');
-                }
-
-                moveLine(arrow, { 'end': circleClosest(i, person)});
+            this.lovearrow.attr({
+                'path': Raphael.format('M{0},{1}L{2},{3}', person.x, person.y, 
+                    attractedpt[0], attractedpt[1])
+            });
+            this.hatearrow.attr({
+                'path': Raphael.format('M{0},{1}L{2},{3}', person.x, person.y, 
+                    repelledpt[0], repelledpt[1])
             });
         };
-
-        function moveLine(element, newcoords) {
-            var p = element.attr('path'), start, end;
-            if (p.length > 2) {
-                console.warn('path attribute contains multiple lines: %s', p);
-            }
-
-            start = newcoords.start || p[0].slice(1);
-            end   = newcoords.end   || p[1].slice(1);
-
-            element.attr({
-                path: Raphael.format('M{0},{1}L{2},{3}', start[0], start[1], end[0], end[1])
-            });
-        }
     }
     /**
      * @static
@@ -456,6 +430,8 @@ function lovehate(canvas, opts) {
         unpause: startAll,
     };
 }
+
+/*--------------------------------------------------------------------------*/
 
 if (Math.sign === undefined) {
     Math.sign = function sign(x) {
