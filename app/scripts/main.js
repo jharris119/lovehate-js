@@ -1,6 +1,12 @@
 /* global _, Raphael, colors: true */
 /* exported lovehate */
 
+/**
+ * lovehate module
+ *
+ * @canvas {HTMLElement} canvas - the DOM element for the lovehate canvas
+ * @opts {{height: number, width: number, count: number, step: boolean}} - initial options
+ */
 function lovehate(canvas, opts) {
     'use strict';
 
@@ -62,7 +68,8 @@ function lovehate(canvas, opts) {
             while ((tmp = _.sample(people)) === person || tmp === person.attracted()) {}
             person.repelled(tmp);
 
-            person.svggroup = new SVGGroup(person);
+            person.draw();
+
             // Don't start animating until everyone is assigned someone to love and hate.
             (startafter = startafter || _.after(people.length, startAll)).call();
         });
@@ -86,7 +93,6 @@ function lovehate(canvas, opts) {
      */
     function next(thePerson) {
         thePerson.next();
-
         if (!opts.step) {
             thePerson.timerId = _.delay(next, delay, thePerson);
         }
@@ -250,8 +256,6 @@ function lovehate(canvas, opts) {
         this.radius  = radius;
         this.vector  = [speed || 1.0, null];
 
-        /** @type {!SVGGroup} */
-        this.svggroup = null;
         /** @type {?number} */
         this.timerId = null;
         /** @const {number} */
@@ -307,7 +311,7 @@ function lovehate(canvas, opts) {
                 hv = Math.atan2(repelledFrom.y - this.y, repelledFrom.x - this.x);
 
             this.vector = [1.0, normalizeAngle(lv + antiparallel(hv))];
-
+           
             if (this.y - this.radius < 0 && this.vector[1] < 0) {
                 this.vector[1] = (this.vector[1] >= -Math.PI / 2 ? 0 : -Math.PI);
             }
@@ -328,7 +332,7 @@ function lovehate(canvas, opts) {
 
             if (_.any(people, _.partial(function(p, q) { return p !== q && collides(p, q); }, this))) {
                 this.x -= rect[0];
-                this.y -= rect[1];
+                this.y -= rect[1];  
             }
 
             this.x = Math.max(Math.min(this.x, width - this.radius), this.radius);
@@ -341,82 +345,62 @@ function lovehate(canvas, opts) {
          * Draw the SVG elements associated with this person.
          */
         this.draw = function() {
-            if (!this.svggroup) {
-                this.svggroup = new SVGGroup(this);
+            if (!this.circle) {
+                this.circle = paper.circle(this.x, this.y, this.radius - 2).attr({
+                    'fill': colors.shift(),
+                    'stroke-width': 1
+                });
             }
             else {
-                this.svggroup.moveSVGElements();
-            }   
-        };
+                this.circle.attr({
+                    'cx': this.x,
+                    'cy': this.y
+                });
+            }
 
-        this.getPointedAtBy = function() { 
-            return pointedAtBy;
+            var pt, pathstr;
+
+            pt = circleClosest(this, this.attracted());
+            pathstr = Raphael.format(Person.prototype.dFormat, this.x, this.y, pt[0], pt[1]);
+            if (!this.lovearrow) {
+                this.lovearrow = paper.path(pathstr).attr(Person.prototype.loveattrs);
+            }
+            else {
+                this.lovearrow.attr({'path': pathstr});
+            }
+
+            pt = circleClosest(this, this.repelled());
+            pathstr = Raphael.format(Person.prototype.dFormat, this.x, this.y, pt[0], pt[1]);
+            if (!this.hatearrow) {
+                this.hatearrow = paper.path(pathstr).attr(Person.prototype.hateattrs);
+            }
+            else {
+                this.hatearrow.attr({'path': pathstr});
+            }  
         };
 
         this.getElement = function() {
-            return this.svggroup.circle;
+            return this.circle;
         };
     }
-
-    /**
-     * The collection of SVGElements tied to this Person.
-     *
-     * @constructor
-     */
-    function SVGGroup(person) {
-        var pt, pathstr;
-        this.circle = paper.circle(person.x, person.y, person.radius - 2).attr({
-            'fill': colors.shift(),
-            'stroke-width': 1
-        });
-
-        console.assert(person.attracted());
-        pt = circleClosest(person, person.attracted());
-        pathstr = Raphael.format('M{0},{1}L{2},{3}', person.x, person.y, pt[0], pt[1]);
-        this.lovearrow = paper.path(pathstr).attr({
-            'stroke': 'pink',
-            'stroke-dasharray': '- ',
-            'stroke-width': 2,
-            'arrow-end': 'classic-wide-long'
-        });
     
-        console.assert(person.repelled());
-        pt = circleClosest(person, person.repelled());
-        pathstr = Raphael.format('M{0},{1}L{2},{3}', person.x, person.y, pt[0], pt[1]);
-        this.hatearrow = paper.path(pathstr).attr({
-            'stroke': 'black',
-            'stroke-dasharray': '. ',
-            'stroke-width': 2,
-            'arrow-end': 'classic-wide-long'
-        });
- 
-        /**
-         * Called when the person is moved.
-         */
-        this.moveSVGElements = function() {
-            // move the person
-            this.circle.attr({
-                'cx': person.x,
-                'cy': person.y
-            });
-
-            var attractedpt = circleClosest(person, person.attracted());
-            var repelledpt = circleClosest(person, person.repelled());
-
-            this.lovearrow.attr({
-                'path': Raphael.format('M{0},{1}L{2},{3}', person.x, person.y, 
-                    attractedpt[0], attractedpt[1])
-            });
-            this.hatearrow.attr({
-                'path': Raphael.format('M{0},{1}L{2},{3}', person.x, person.y, 
-                    repelledpt[0], repelledpt[1])
-            });
-        };
-    }
     /**
      * @static
      */
     Person.id = 1;
+    Person.prototype.dFormat = 'M{0},{1}L{2},{3}';
+    Person.prototype.loveattrs = {
+        'stroke': 'pink',
+        'stroke-dasharray': '- ',
+        'stroke-width': 2,
+        'arrow-end': 'classic-wide-long'
+    };
+    Person.prototype.hateattrs = {
+        'stroke': 'black',
+        'stroke-dasharray': '. ',
+        'stroke-width': 2,
+        'arrow-end': 'classic-wide-long'
+    };
 
     return {
         init: initialize,
